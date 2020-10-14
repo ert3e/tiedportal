@@ -1,0 +1,32 @@
+//
+//  SubProfileController.m
+//  Ecopark
+//
+//  Created by Samiflabs on 31/08/16.
+//  Copyright © 2016 Samiflabs. All rights reserved.
+//
+
+#import "SubProfileController.h"
+
+@implementation SubProfileController
+
+
+- (IBAction)BTMyProfileTap:(id)sender
+{
+    MyProfileController *controller = [self.storyboard instantiateViewControllerWithIdentifier:@"MyProfileController"];
+    [self.navigationController pushViewController:controller animated:true];
+}
+
+- (IBAction)BTMyBookingTap:(id)sender{
+}
+
+- (IBAction)BTMyOfferedParkingsTap:(id)sender {
+}
+
+- (IBAction)BTHelpTap:(id)sender {
+}
+
+- (IBAction)BTAboutTap:(id)sender {
+}
+
+@end

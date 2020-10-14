@@ -1,0 +1,23 @@
+//
+//  Main_ViewCell.m
+//  VideoPodcast
+//
+//  Created by Samiflabs on 04/07/16.
+//  Copyright © 2016 mobileappdeveloper. All rights reserved.
+//
+
+#import "Main_ViewCell.h"
+
+@implementation Main_ViewCell
+
+- (void)awakeFromNib {
+    // Initialization code
+}
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+    [super setSelected:selected animated:animated];
+
+    // Configure the view for the selected state
+}
+
+@end

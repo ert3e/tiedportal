@@ -1,0 +1,267 @@
+package com.samiflabs.myapplication;
+
+import android.app.ActionBar;
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.InputStream;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+
+public class ListDetailActivity extends Activity
+{
+    public RelativeLayout action_bar_relative_layout;
+
+    public TextView title;
+    public ImageButton icon;
+
+    private String fontPath1 = "fonts/DroidSerif-Bold.ttf";
+    private String fontPath2 = "fonts/DroidSerif-BoldItalic.ttf";
+    private String fontPath3 = "fonts/DroidSerif-Italic.ttf";
+    private String fontPath4 = "fonts/DroidSerif-Regular.ttf";
+
+
+    private Typeface tf1;
+    private Typeface tf2;
+    private Typeface tf3;
+    private Typeface tf4;
+
+    Button book;
+    TextView add, name, email, number, desc, time, days, access, price;
+    String str_add, str_name, str_email, str_number, str_desc, str_time,
+            str_days, str_access, str_price, str_image1, str_image2, str_image3 , str_timestart ,str_timeend;
+    ImageView img_image1, img_image2, img_image3;
+
+    String [] divide ;
+    String day1 ;
+    String day2 ;
+    String day3 ;
+    String day4 ;
+    String day5 ;
+    String day6 ;
+    String day7  ;
+    int d;
+
+    String dayOfTheWeek;
+    String str_data = "1";
+
+    ArrayList <String>daylist = new ArrayList();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_list_detail);
+
+        tf1 = Typeface.createFromAsset(getAssets(), fontPath1);
+        tf2 = Typeface.createFromAsset(getAssets(), fontPath2);
+        tf3 = Typeface.createFromAsset(getAssets(), fontPath3);
+        tf4 = Typeface.createFromAsset(getAssets(), fontPath4);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
+        Date da = new Date();
+        dayOfTheWeek = sdf.format(da);
+        System.out.println("day" + dayOfTheWeek);
+
+
+
+        Intent i = getIntent();
+        str_add = i.getStringExtra("address");
+        str_name = i.getStringExtra("name");
+        str_email = i.getStringExtra("email");
+        str_number = i.getStringExtra("mobile");
+        str_desc = i.getStringExtra("desc");
+        str_time = i.getStringExtra("time");
+        str_days = i.getStringExtra("day");
+        str_access = i.getStringExtra("access");
+        str_price = i.getStringExtra("price");
+        str_image1 = i.getStringExtra("image1");
+        str_image2 = i.getStringExtra("image2");
+        str_image3 = i.getStringExtra("image3");
+        str_timestart = i.getStringExtra("timestart");
+        str_timeend = i.getStringExtra("timeend");
+
+        setUpActionBar();
+
+        book = (Button)findViewById(R.id.btn_book);
+        book.setVisibility(View.GONE);
+
+        book.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {               //str1.toLowerCase().contains(str2.toLowerCase())
+
+                    Intent book = new Intent(getApplicationContext(), TimeActivity.class);
+                    book.putExtra("price", str_price);
+                    book.putExtra("timestart", str_timestart);
+                    book.putExtra("timeend", str_timeend);
+                    book.putExtra("name",str_name);
+                    book.putExtra("email",str_email);
+                    book.putExtra("address",str_add);
+                    book.putExtra("mobile",str_number);
+                    book.putExtra("desc",str_desc);
+                    book.putExtra("time",str_time);
+                    book.putExtra("day",str_days);
+                    book.putExtra("access",str_access);
+                    book.putExtra("image1",str_image1);
+                    book.putExtra("image2",str_image2);
+                    book.putExtra("image3",str_image3);
+                    book.putExtra("data",str_data);
+
+                    startActivity(book);
+
+            }
+        });
+
+        add = (TextView)findViewById(R.id.txt_parkingadd);
+        add.setText(str_add);
+
+        name = (TextView)findViewById(R.id.txt_name);
+        name.setText(str_name);
+
+        email = (TextView)findViewById(R.id.txt_email);
+        email.setText(str_email);
+
+        number = (TextView)findViewById(R.id.txt_number);
+        number.setText(str_number);
+
+        desc = (TextView)findViewById(R.id.txt_desc);
+        desc.setText(str_desc);
+
+        time = (TextView)findViewById(R.id.txt_time);
+        time.setText(str_time);
+
+        days = (TextView)findViewById(R.id.txt_day);
+        days.setText(str_days);
+        System.out.println(" Day " + str_days);
+
+
+       divide = str_days.split("\\,");
+        for (d =0; d<divide.length ;d++)      //String d : divide
+        {
+
+            System.out.println(" Days " + divide[d]);
+            if (divide[d].contains(dayOfTheWeek))
+            {
+                book.setVisibility(View.VISIBLE);
+            }
+            else
+            {
+                Toast.makeText(getBaseContext(), "Please check day", Toast.LENGTH_SHORT).show();
+            }
+
+        }
+
+        access = (TextView)findViewById(R.id.txt_access);
+        access.setText(str_access);
+
+        price = (TextView)findViewById(R.id.txt_price);
+        price.setText("$"+str_price);
+
+        img_image1 = (ImageView)findViewById(R.id.logo);
+        new DownLoadImageTask(img_image1).execute(str_image1);
+
+        img_image2 = (ImageView)findViewById(R.id.image1);
+        new DownLoadImageTask(img_image2).execute(str_image2);
+
+        img_image3 = (ImageView)findViewById(R.id.image2);
+        new DownLoadImageTask(img_image3).execute(str_image3);
+    }
+
+    private void setUpActionBar()
+    {
+        ActionBar mActionBar = getActionBar();
+//        mActionBar.hide();
+
+        getActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        getActionBar().setCustomView(R.layout.custom_list);
+
+        ActionBar.LayoutParams p = new ActionBar.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        p.gravity = Gravity.CENTER;
+
+        LayoutInflater layoutInflater = LayoutInflater.from(this);
+        View customActionBarView = layoutInflater.inflate(R.layout.custom_list, null);
+
+        action_bar_relative_layout = (RelativeLayout) customActionBarView.findViewById(R.id.relative_layout_action_bar);
+
+        title = (TextView) customActionBarView.findViewById(R.id.custom_actionbar_textview);
+        title.setTypeface(tf4);
+
+        title.setText(str_add);
+        System.out.println("title " + title);
+
+        TextView first = (TextView)customActionBarView.findViewById(R.id.bast);
+        first.setTypeface(tf4);
+
+        first.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
+
+        icon = (ImageButton) customActionBarView.findViewById(R.id.menuicon);
+
+        icon.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                onBackPressed();
+            }
+        });
+
+        mActionBar.setCustomView(customActionBarView);
+        mActionBar.setDisplayShowCustomEnabled(true);
+    }
+
+    private class DownLoadImageTask extends AsyncTask<String,Void,Bitmap>
+    {
+        ImageView imageView;
+
+        public DownLoadImageTask(ImageView imageView)
+        {
+            this.imageView = imageView;
+        }
+
+        protected Bitmap doInBackground(String...urls)
+        {
+            String urlOfImage = urls[0];
+            Bitmap logo = null;
+
+            try
+            {
+                InputStream is = new URL(urlOfImage).openStream();
+                logo = BitmapFactory.decodeStream(is);
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+            return logo;
+        }
+
+        protected void onPostExecute(Bitmap result)
+        {
+            imageView.setImageBitmap(result);
+        }
+    }
+}

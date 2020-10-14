@@ -1,0 +1,32 @@
+{
+    "name": "sebwite/contracts",
+    "description": "A theme framwork for your next web application. Theme inheritence, powered by Laravel and Assetic, can be used in any application!",
+    "keywords": ["platform", "ecommerce", "laravel", "bootstrap"],
+    "license": "proprietary",
+    "authors": [
+        {"name": "Sebwite", "homepage": "https://sebwite.nl", "email": "info@sebwite.nl"},
+        {"name": "Robin Radic", "homepage": "https://github.com/robinradic", "email": "robin@sebwite.nl", "role": "Developer"}
+    ],
+    "require": {
+        "php": ">=5.5.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sebwite\\Contracts\\": "src/"
+        }
+    },
+    "require-dev": {
+        "sebwite/testing": "1.0.*",
+        "sebwite/phing": "1.0.*"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sebwite\\Tests\\Contracts\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-develop": "1.0.x-dev"
+        }
+    }
+}

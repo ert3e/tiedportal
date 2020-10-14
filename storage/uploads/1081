@@ -1,0 +1,714 @@
+package com.samiflabs.myapplication;
+
+import android.app.ActionBar;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
+import android.location.Address;
+import android.location.Geocoder;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.TimePicker;
+import android.widget.Toast;
+import android.os.Handler;
+import android.os.Message;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
+
+public class OfferParking extends Activity implements OnClickListener
+{
+
+    private static final int SELECT_FILE1 = 1;
+    private static final int SELECT_FILE2 = 2;
+    private static final int SELECT_FILE3 = 3;
+
+    String selectedPath1 ;
+    String selectedPath2 ;
+    String selectedPath3 ;
+
+    Button offer;
+
+    static double str_latitude;
+    static double str_longitude;
+
+    TextView starttime,endtime,editstart,editend,editday,countday;
+    String start,bTime,email,mobile,finalday,remove;
+    ImageView camera1,camera2,camera3;
+    String txt_name,txt_add,txt_desc,txt_instru,txt_from,txt_end,txt_day,txt_mobile,txt_price,txt_latitude,txt_longitude;
+    EditText name,add,desc,access,price;
+
+    public RelativeLayout action_bar_relative_layout;
+
+    public TextView title;
+    public ImageButton icon;
+
+    int count = 0 ;
+
+    final int CHECKBOX_ALERTDIALOG=0;
+
+    final boolean checked_state[]={false,false,false,false,false,false,false}; //The array that holds the checked state of the checkbox items
+    final CharSequence[] days_check={"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+
+    private String fontPath1 = "fonts/DroidSerif-Bold.ttf";
+    private String fontPath2 = "fonts/DroidSerif-BoldItalic.ttf";
+    private String fontPath3 = "fonts/DroidSerif-Italic.ttf";
+    private String fontPath4 = "fonts/DroidSerif-Regular.ttf";
+
+
+    private Typeface tf1;
+    private Typeface tf2;
+    private Typeface tf3;
+    private Typeface tf4;
+
+    String latitudedata;
+    String longitudedata;
+    String locationAddress;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_offer_parking);
+
+        Intent i = getIntent();
+        email = i.getStringExtra("eml");
+        mobile = i.getStringExtra("mobile");
+        System.out.println("menuactivity email offer " + email);
+        System.out.println("menuactivity mobile offer " + mobile);
+
+        setUpActionBar();
+
+        tf1 = Typeface.createFromAsset(getAssets(), fontPath1);
+        tf2 = Typeface.createFromAsset(getAssets(), fontPath2);
+        tf3 = Typeface.createFromAsset(getAssets(), fontPath3);
+        tf4 = Typeface.createFromAsset(getAssets(), fontPath4);
+
+        starttime = (TextView)findViewById(R.id.starttime);
+        starttime.setTypeface(tf4);
+
+        endtime = (TextView)findViewById(R.id.endtime);
+        endtime.setTypeface(tf4);
+
+        editstart = (TextView)findViewById(R.id.editfrom);
+        editstart.setTypeface(tf4);
+
+        editend = (TextView)findViewById(R.id.edituntil);
+        editend.setTypeface(tf4);
+
+        editday = (TextView)findViewById(R.id.editdays);
+        editday.setTypeface(tf4);
+
+        countday = (TextView)findViewById(R.id.daycount);
+        countday.setTypeface(tf4);
+
+        camera1 = (ImageView)findViewById(R.id.image1);
+        camera2 = (ImageView)findViewById(R.id.image2);
+        camera3 = (ImageView)findViewById(R.id.image3);
+        offer = (Button)findViewById(R.id.btn_offerpaking);
+        offer.setTypeface(tf1);
+
+
+        name = (EditText)findViewById(R.id.contactname);
+        name.setTypeface(tf4);
+
+        add = (EditText)findViewById(R.id.parkingadd);
+        add.setTypeface(tf4);
+
+        desc = (EditText)findViewById(R.id.description);
+        desc.setTypeface(tf4);
+
+        access = (EditText)findViewById(R.id.access);
+        access.setTypeface(tf4);
+
+        price = (EditText)findViewById(R.id.price);
+        price.setTypeface(tf4);
+
+        TextView time = (TextView)findViewById(R.id.timeaval);
+        time.setTypeface(tf1);
+
+        TextView day = (TextView)findViewById(R.id.daysaval);
+        day.setTypeface(tf1);
+
+        TextView from = (TextView)findViewById(R.id.from);
+        from.setTypeface(tf4);
+
+        TextView until = (TextView)findViewById(R.id.until);
+        until.setTypeface(tf4);
+
+        txt_add = add.getText().toString().trim();
+
+        offer.setOnClickListener(new OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+
+                txt_name = name.getText().toString().trim();
+                txt_add = add.getText().toString().trim();
+                txt_desc = desc.getText().toString().trim();
+                txt_instru = access.getText().toString().trim();
+                txt_from = starttime.getText().toString().trim();
+                txt_end = endtime.getText().toString().trim();
+                txt_price = price.getText().toString().trim();
+
+                if (txt_name.equals("") || txt_add.equals("") || txt_desc.equals("") || txt_instru.equals("") || txt_from.equals("") || txt_end.equals("")
+                        || txt_price.equals("") || remove.equals("") || selectedPath1.equals("")
+                        || selectedPath2.equals("") || selectedPath3.equals(""))
+                {
+                    Toast.makeText(getApplicationContext(), "Please enter all values", Toast.LENGTH_SHORT).show();
+//                    GeocodingLocation locationAddress = new GeocodingLocation();
+//                    locationAddress.getAddressFromLocation(txt_add,
+//                            getApplicationContext(), new GeocoderHandler());
+
+                }
+                else
+                {
+
+
+                    doFileUpload();
+
+                    name.setText("");
+                    add.setText("");
+                    desc.setText("");
+                    access.setText("");
+                    starttime.setText("");
+                    endtime.setText("");
+                    countday.setText("");
+                    price.setText("");
+                }
+            }
+        });
+
+        editday.setOnClickListener(this);
+
+        editstart.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                Calendar mcurrentTime = Calendar.getInstance();
+                int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
+                int minute = mcurrentTime.get(Calendar.MINUTE);
+                TimePickerDialog mTimePicker;
+                mTimePicker = new TimePickerDialog(OfferParking.this, new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+
+                        updateTime(selectedHour,selectedMinute);
+                    }
+                }, hour, minute, true);//Yes 24 hour time
+                mTimePicker.setTitle("Select Time");
+                mTimePicker.show();
+            }
+        });
+
+        editend.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+
+                    Calendar mcurrentTime = Calendar.getInstance();
+                    int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
+                    int minute = mcurrentTime.get(Calendar.MINUTE);
+                    TimePickerDialog mTimePicker = new TimePickerDialog(OfferParking.this, new TimePickerDialog.OnTimeSetListener() {
+                        @Override
+                        public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+
+                            updateendtime(selectedHour, selectedMinute);
+
+                        }
+                    }, hour, minute, true);
+                    mTimePicker.setTitle("Select Time");
+                    mTimePicker.show();
+            }
+        });
+
+        camera1.setOnClickListener(new OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+
+
+                openGallery(SELECT_FILE1);
+
+            }
+        });
+
+        camera2.setOnClickListener(new OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                openGallery(SELECT_FILE2);
+
+            }
+        });
+
+        camera3.setOnClickListener(new OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                openGallery(SELECT_FILE3);
+
+            }
+        });
+
+    }
+
+
+    private void setUpActionBar()
+    {
+        ActionBar mActionBar = getActionBar();
+//        mActionBar.hide();
+
+        getActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        getActionBar().setCustomView(R.layout.custom_offer_parking);
+
+        ActionBar.LayoutParams p = new ActionBar.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        p.gravity = Gravity.CENTER;
+
+        LayoutInflater layoutInflater = LayoutInflater.from(this);
+        View customActionBarView = layoutInflater.inflate(R.layout.custom_offer_parking, null);
+
+        action_bar_relative_layout = (RelativeLayout) customActionBarView.findViewById(R.id.relative_layout_action_bar);
+
+        title = (TextView) customActionBarView.findViewById(R.id.custom_actionbar_textview);
+
+        TextView first = (TextView)customActionBarView.findViewById(R.id.bast);
+        first.setTypeface(tf4);
+
+        icon = (ImageButton) customActionBarView.findViewById(R.id.menuicon);
+
+        icon.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+//                onBackPressed();
+            }
+        });
+
+        mActionBar.setCustomView(customActionBarView);
+        mActionBar.setDisplayShowCustomEnabled(true);
+    }
+
+
+    public void openGallery(int req_code)
+    {
+//        Intent intent = new Intent();
+        Intent galleryIntent = new Intent(Intent.ACTION_PICK,
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+      galleryIntent.setType("image/*");
+        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
+
+        startActivityForResult(Intent.createChooser(galleryIntent,"Select file to upload "), req_code);
+    }
+
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        if (resultCode == RESULT_OK)
+        {
+            Uri selectedImageUri1 = data.getData();
+            Uri selectedImageUri2 = data.getData();
+            Uri selectedImageUri3 = data.getData();
+
+            if (requestCode == SELECT_FILE1)
+            {
+                selectedPath1 = getPath(selectedImageUri1);
+                System.out.println("selectedPath1 : " + selectedPath1);
+                camera1.setImageBitmap(BitmapFactory.decodeFile(selectedPath1));
+
+            }
+            else if (requestCode == SELECT_FILE2)
+            {
+                selectedPath2 = getPath(selectedImageUri2);
+                System.out.println("selectedPath2 : " + selectedPath2);
+                camera2.setImageBitmap(BitmapFactory.decodeFile(selectedPath2));
+            }
+            else if (requestCode == SELECT_FILE3)
+            {
+                selectedPath3 = getPath(selectedImageUri3);
+                System.out.println("selectedPath3 : " + selectedPath3);
+                camera3.setImageBitmap(BitmapFactory.decodeFile(selectedPath3));
+            }
+        }
+    }
+
+
+    public String getPath(Uri uri)
+    {
+        String[] projection = { MediaStore.Images.Media.DATA };
+
+        Cursor cursor = managedQuery(uri, projection, null, null, null);
+
+        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+
+        cursor.moveToFirst();
+        return cursor.getString(column_index);
+    }
+
+    private void doFileUpload()
+    {
+        File file1 = new File(selectedPath1);
+        File file2 = new File(selectedPath2);
+        File file3 = new File(selectedPath3);
+
+        String urlString = "http://www.fantamites.com/ecopark/offer_parking.php";
+
+        executeMultipartPost(urlString, selectedPath1, selectedPath2, selectedPath3, email, mobile, txt_name, txt_add, txt_desc, txt_instru, txt_from, txt_end, remove, txt_price, latitudedata, longitudedata);
+    }
+
+    public static void executeMultipartPost(String url, String imgPath1, String imgPath2, String imgPath3, String email_txt, String mobile, String name, String add, String desc, String access, String from, String until, String day, String price, String latitude, String longitude)
+    {
+        try
+        {
+            HttpClient client = new DefaultHttpClient();
+            HttpPost poster = new HttpPost(url);
+
+            File image1 = new File(imgPath1);  //get the actual file from the device
+            File image2 = new File(imgPath2);
+            File image3 = new File(imgPath3);
+
+            MultipartEntity entity = new MultipartEntity(HttpMultipartMode.BROWSER_COMPATIBLE);
+
+            entity.addPart("email", new StringBody(email_txt));
+            System.out.println("EMAIL" + email_txt);
+
+            entity.addPart("contact_no", new StringBody(mobile));
+            System.out.println("number" + mobile);
+
+            entity.addPart("name", new StringBody(name));
+            System.out.println("NAME" + name);
+
+            entity.addPart("parking_address", new StringBody(add));
+            System.out.println("ADDRESS" + add);
+
+            entity.addPart("description", new StringBody(desc));
+            System.out.println("DESC" + desc);
+
+            entity.addPart("parking_access_instructions", new StringBody(access));
+            System.out.println("ACCESS" + access);
+
+            entity.addPart("from_time", new StringBody(from));
+            System.out.println("FROM" + from);
+
+            entity.addPart("end_time", new StringBody(until));
+            System.out.println("END" + until);
+
+            entity.addPart("days", new StringBody(day));
+            System.out.println("DAY" + day);
+
+            entity.addPart("latitude", new StringBody(latitude));
+            System.out.println("LATITUDE" + latitude);
+
+            entity.addPart("longitude", new StringBody(longitude));
+            System.out.println("LONGITUDE" + longitude);
+
+            entity.addPart("price_per_hour", new StringBody(price));
+            System.out.println("PRICE" + price);
+
+            entity.addPart("image1", new FileBody(image1));
+            System.out.println("IMAGE" + image1);
+
+            entity.addPart("image2", new FileBody(image2));
+            System.out.println("IMAGE2" + image2);
+
+            entity.addPart("image3", new FileBody(image3));
+            System.out.println("IMAGE3" + image3);
+
+            poster.setEntity(entity );
+
+            client.execute(poster, new ResponseHandler<Object>()
+            {
+                public Object handleResponse(HttpResponse response) throws ClientProtocolException, IOException
+                {
+                    HttpEntity respEntity = response.getEntity();
+                    String responseString = EntityUtils.toString(respEntity);
+                    System.out.println("###### Response ####### " + responseString);
+                    // do something with the response string
+                    return null;
+                }
+            });
+        }
+        catch (Exception e)
+        {
+            //do something with the error
+        }
+    }
+
+    // Used to convert 24hr format to 12hr format with AM/PM values
+    private void updateTime(int hours, int mins)
+    {
+
+        String timeSet = "";
+        if (hours > 12) {
+            hours -= 12;
+            timeSet = "PM";
+        } else if (hours == 0) {
+            hours += 12;
+            timeSet = "AM";
+        } else if (hours == 12)
+            timeSet = "PM";
+        else
+            timeSet = "AM";
+
+
+        String minutes = "";
+        if (mins < 10)
+            minutes = "0" + mins;
+        else
+            minutes = String.valueOf(mins);
+
+        // Append in a StringBuilder
+        String aTime = new StringBuilder().append(hours).append(':')
+                .append(minutes).append(" ").append(timeSet).toString();
+
+        starttime.setText(aTime);
+        start = starttime.getText().toString();
+        System.out.println("Start time " + start);
+
+        txt_add = add.getText().toString().trim();
+
+        GeocodingLocation locationAddress = new GeocodingLocation();
+        locationAddress.getAddressFromLocation(txt_add,
+                getApplicationContext(), new GeocoderHandler());
+
+    }
+
+    // Used to convert 24hr format to 12hr format with AM/PM values
+    private void updateendtime(int hours, int mins)
+    {
+
+        String timeSet = "";
+        if (hours > 12) {
+            hours -= 12;
+            timeSet = "PM";
+        } else if (hours == 0) {
+            hours += 12;
+            timeSet = "AM";
+        } else if (hours == 12)
+            timeSet = "PM";
+        else
+            timeSet = "AM";
+
+
+        String minutes = "";
+        if (mins < 10)
+            minutes = "0" + mins;
+        else
+            minutes = String.valueOf(mins);
+
+        // Append in a StringBuilder
+        bTime = new StringBuilder().append(hours).append(':')
+                .append(minutes).append(" ").append(timeSet).toString();
+
+
+//        if (start.equals(""))
+//         {
+//             Toast.makeText(getApplicationContext(),"Plaese select first from time" , Toast.LENGTH_SHORT).show();
+//         }
+       if (start.compareTo(bTime) < 0)
+        {
+            endtime.setText(bTime);
+        }
+        else
+        {
+            Toast.makeText(getApplicationContext(),"Your time endtime is invalid" , Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
+    public Dialog onCreateDialog(int id)
+    {
+        switch (id)
+        {
+            case CHECKBOX_ALERTDIALOG:
+                AlertDialog.Builder builder1=new AlertDialog.Builder(OfferParking.this)
+                        .setTitle("Choose a Days")
+                        .setMultiChoiceItems(days_check, null, new DialogInterface.OnMultiChoiceClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which, boolean isChecked) {
+                            // TODO Auto-generated method stub
+                            // storing the checked state of the items in an array
+                                checked_state[which]=isChecked;
+                            }
+                        })
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            // TODO Auto-generated method stub
+                                String display_checked_colors = "";
+
+                                for(int i=0;i<7;i++)
+                                {
+                                    if(checked_state[i]==true){
+                                        display_checked_colors=display_checked_colors+" "+days_check[i];
+                                        System.out.println("Day Count " + days_check[i]);
+                                        finalday = finalday + "," + String.valueOf(days_check[i]);
+                                        System.out.println("Count " + finalday);
+
+                                        count = count + 1;
+                                        System.out.println("Count " + count);
+                                    }
+                                }
+
+                                remove = finalday.substring(5);
+                                System.out.println("Count " + remove);
+
+
+
+                                countday.setText(String.valueOf(count));
+                                Toast.makeText(getApplicationContext(), "The selected day(s) is "
+                                        + display_checked_colors, Toast.LENGTH_LONG).show();
+
+
+                                display_checked_colors=null;
+
+                                    //clears the array used to store checked state
+                                for(int i=0;i<checked_state.length;i++){
+                                    if(checked_state[i]==true)
+                                    {
+                                        checked_state[i]=false;
+                                    }
+                                }
+
+                                dialog.dismiss();
+                            }
+                        });
+                AlertDialog alertdialog=builder1.create();
+                return alertdialog;
+
+        }
+        return null;
+    }
+
+    public void onClick(View v)
+        {
+            switch (v.getId())
+            {
+                case R.id.editdays:
+                    showDialog(CHECKBOX_ALERTDIALOG);
+                    break;
+
+                default:
+                    break;
+
+            }
+
+        }
+
+
+    private class GeocoderHandler extends Handler {
+        @Override
+        public void handleMessage(Message message) {
+
+            switch (message.what) {
+                case 1:
+                    Bundle bundle = message.getData();
+                    locationAddress = bundle.getString("address");
+                    break;
+                default:
+                    locationAddress = null;
+            }
+            System.out.println("AddressDATA" + locationAddress);
+        }
+    }
+
+
+
+    public class GeocodingLocation
+    {
+
+        private static final String TAG = "GeocodingLocation";
+
+        public void getAddressFromLocation(final String locationAddress,
+                                                  final Context context, final Handler handler) {
+            Thread thread = new Thread() {
+                @Override
+                public void run() {
+                    Geocoder geocoder = new Geocoder(context, Locale.getDefault());
+                    String result = null;
+                    try {
+                        List<Address> addressList = geocoder.getFromLocationName(locationAddress, 1);
+                        if (addressList != null && addressList.size() > 0) {
+                            Address address = addressList.get(0);
+                            StringBuilder sb = new StringBuilder();
+                            sb.append(address.getLatitude()).append("\n");
+                            sb.append(address.getLongitude()).append("\n");
+                            str_latitude = address.getLatitude();
+                            latitudedata = String.valueOf(str_latitude);
+                            str_longitude =address.getLongitude();
+                            longitudedata = String.valueOf(str_longitude);
+                            System.out.println("Latitude" + latitudedata);
+                            System.out.println("Longitude" + longitudedata);
+                            result = sb.toString();
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "Unable to connect to Geocoder", e);
+                    } finally {
+                        Message message = Message.obtain();
+                        message.setTarget(handler);
+                        if (result != null) {
+                            message.what = 1;
+                            Bundle bundle = new Bundle();
+                            result = "Address: " + locationAddress +
+                                    "\n\nLatitude and Longitude :\n" + result;
+
+                            bundle.putString("address", result);
+                            message.setData(bundle);
+                        } else {
+                            message.what = 1;
+                            Bundle bundle = new Bundle();
+                            result = "Address: " + locationAddress +
+                                    "\n Unable to get Latitude and Longitude for this address location.";
+                            bundle.putString("address", result);
+                            message.setData(bundle);
+                        }
+                        message.sendToTarget();
+                    }
+                }
+            };
+            thread.start();
+        }
+    }
+}

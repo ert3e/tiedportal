@@ -1,0 +1,852 @@
+//
+//  Podcast_ViewController.m
+//  VideoPodcast
+//
+//  Created by Samir Vohra on 14/03/16.
+//  Copyright (c) 2016 mobileappdeveloper. All rights reserved.
+//
+
+#import "Podcast_ViewController.h"
+#import "Cell.h"
+
+@interface Podcast_ViewController ()
+
+@end
+
+@implementation Podcast_ViewController
+@synthesize btn_LeftCircle,btn_RightCircle,moviePlayerController,tblview;
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    [self setmovieplayer];
+    [self setTopBar];
+}
+
+-(void)setmovieplayer
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self  selector:@selector(orientationChanged:)    name:UIDeviceOrientationDidChangeNotification  object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(loadStateChanged:) name:MPMoviePlayerLoadStateDidChangeNotification object:nil];
+    [NSTimer scheduledTimerWithTimeInterval:0.1
+                                     target:self
+                                   selector:@selector(tick:)
+                                   userInfo:nil
+                                    repeats:YES];
+    
+    //    NSString *filepath = [[NSBundle mainBundle] pathForResource:@"1" ofType:@"mov"];
+    //    NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    
+    moviePlayerController=[[MPMoviePlayerController alloc] init];
+    [moviePlayerController prepareToPlay];
+    [moviePlayerController setMovieSourceType:MPMovieSourceTypeStreaming];
+    [moviePlayerController setScalingMode:MPMovieScalingModeFill];
+    moviePlayerController.view.backgroundColor=[UIColor blackColor];
+    [moviePlayerController.view setFrame:CGRectMake(0, 70, self.view.frame.size.width, self.view.frame.size.height/3.2)];
+    [moviePlayerController setShouldAutoplay:true];
+    moviePlayerController.controlStyle=MPMovieControlStyleNone;
+    [self.view.layer addSublayer:moviePlayerController.view.layer];
+    
+    
+    UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture_player:)];
+    tapGestureRecognizer.delegate = self;
+    [moviePlayerController.view addGestureRecognizer:tapGestureRecognizer];
+    
+    play=false;
+    
+    [self webservice];
+    [self setControlView];
+}
+
+#pragma mark - gesture delegate
+// this allows you to dispatch touches
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    return YES;
+}
+// this enables you to handle multiple recognizers on single view
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    return YES;
+}
+
+-(void)handleTapGesture_player:(UITapGestureRecognizer*)sender{
+    NSLog(@"%@", @"touch");
+    
+    if (play) {
+        if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+        {
+            view_control_main.frame=CGRectMake(0, self.view.frame.size.height, self.view.frame.size.width, self.view.frame.size.height/4);
+        }
+        play=false;
+        
+        [moviePlayerController play];
+        lblPlay.text=@"PLAY";
+        lblPlay.textColor=APP_COLOR;
+    }
+    else{
+        
+        if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+        {
+            view_control_main.frame=CGRectMake(0, self.view.frame.size.height-(self.view.frame.size.height/4), self.view.frame.size.width, self.view.frame.size.height/4);
+        }
+        
+        play=true;
+        [moviePlayerController pause];
+        lblPlay.text=@"PAUSE";
+        lblPlay.textColor=[UIColor redColor];
+    }
+}
+
+
+-(void)handleTapGesture_detail:(UITapGestureRecognizer*)sender{
+    [view_detail removeFromSuperview];
+}
+
+-(void)webservice
+{
+    //NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+    
+    
+    NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+    NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+    
+    //NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/DAILY%20MOTOR%201.json"];
+    //http://bposerviceslabs.com/video_podcast/json/TheDailyMotor.php
+    
+    // NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/json/TheDailyMotor.php"];
+    NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/json/MOTOROBSERVER4K29.php"];
+    
+    arr_video_info=[[NSMutableArray alloc]init];
+    arr_video_title=[[NSMutableArray alloc]init];
+    arr_video_URL=[[NSMutableArray alloc]init];
+    arr_video_descri=[[NSMutableArray alloc]init];
+    arr_link=[[NSMutableArray alloc]init];
+    
+    NSURLSessionDataTask * dataTask = [defaultSession dataTaskWithURL:url
+                                                    completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                                        if(error == nil)
+                                                        {
+                                                            NSError* error;
+                                                            NSDictionary* json = [NSJSONSerialization
+                                                                                  JSONObjectWithData:data
+                                                                                  options:kNilOptions
+                                                                                  error:&error];
+                                                            
+                                                            NSLog(@"%@",json);
+                                                            
+                                                            NSDictionary *dict_channel=[json objectForKey:@"channel"];
+                                                            NSMutableArray *arr_detail=[[NSMutableArray alloc]init];
+                                                            arr_detail=[dict_channel objectForKey:@"item"];
+                                                            //NSLog(@"______________%@",arr_detail);
+                                                            
+                                                            for (int i=0; i<arr_detail.count; i++)
+                                                            {
+                                                                NSDictionary *dict_item=arr_detail[i];
+                                                                NSString *str_title=[dict_item objectForKey:@"title"];
+                                                                NSString *str_pub_date=[dict_item objectForKey:@"pubDate"];
+                                                                NSDictionary *dic_encl=[dict_item objectForKey:@"enclosure"];
+                                                                NSDictionary *dic_attri=[dic_encl objectForKey:@"@attributes"];
+                                                                
+                                                                NSString *str_url=[dic_attri objectForKey:@"url"];
+                                                                NSString *str_descri=[dict_item objectForKey:@"description"];
+                                                                NSString *str_link=[dict_item objectForKey:@"link"];
+                                                                
+                                                                //NSLog(@"--------%@",str_descri);
+                                                                [arr_video_descri addObject:str_descri];
+                                                                [arr_video_title addObject:str_title];
+                                                                [arr_video_info addObject:str_pub_date];
+                                                                [arr_video_URL addObject:str_url];
+                                                                //[arr_link addObject:str_link];
+                                                                
+                                                                NSString *filepath = [NSString stringWithFormat:@"%@",arr_video_URL[0]];
+                                                                NSURL *fileURL = [NSURL URLWithString: filepath];
+                                                                moviePlayerController.contentURL=fileURL;
+                                                                [moviePlayerController play];
+                                                                
+                                                                tblview=[[UITableView alloc]initWithFrame:CGRectMake(0, CGRectGetMaxY(view_control_main.frame), view_control_main.frame.size.width, self.view.frame.size.height-CGRectGetMaxY(view_control_main.frame))];
+                                                            }
+                                                            tblview.delegate=self;
+                                                            tblview.dataSource=self;
+                                                            tblview.separatorColor=APP_COLOR;
+                                                            [self.view addSubview:tblview];
+                                                        }
+                                                        else{
+                                                            
+                                                            NSLog(@"ERROR OCCURE..............");
+                                                            
+                                                            UIAlertView *alr=[[UIAlertView alloc] initWithTitle:@"Error" message:@"Cannot load the Video! Try Again." delegate:self cancelButtonTitle:nil otherButtonTitles:@"OK", nil];
+                                                            [alr show];
+                                                        }
+                                                    }];
+    
+    [dataTask resume];
+}
+-(void)setControlView
+{
+    view_control_main=[[UIView alloc]initWithFrame:CGRectMake(0, CGRectGetMaxY(moviePlayerController.view.frame) , self.view.frame.size.width, self.view.frame.size.height/6.8)];
+    view_control_main.backgroundColor=[UIColor whiteColor];
+    [self.view addSubview:view_control_main];
+    
+    view_line=[[UIView alloc]initWithFrame:CGRectMake(0, CGRectGetMaxY(view_control_main.frame)-1 , self.view.frame.size.width, 1)];
+    view_line.backgroundColor=APP_COLOR;
+    [self.view addSubview:view_line];
+    
+    lblPlay=[[UILabel alloc]initWithFrame:CGRectMake(view_control_main.bounds.size.width/3.1, 0, 200, 40)];
+    lblPlay.text=@"PLAY";
+    [lblPlay setFont:[UIFont systemFontOfSize:8]];
+    lblPlay.textColor=APP_COLOR;
+    [view_control_main addSubview:lblPlay];
+    
+    lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(5, 0, 200, 40)];
+    lblBuffer.text=@"BUFFERING";
+    [lblBuffer setFont:[UIFont systemFontOfSize:8]];
+    lblBuffer.textColor=APP_COLOR;
+    [view_control_main addSubview:lblBuffer];
+    
+    lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(5, -10, 200, 40)];
+    lblPlayHead.text=@"PLAYHEAD";
+    [lblPlayHead setFont:[UIFont systemFontOfSize:8]];
+    lblPlayHead.textColor=APP_COLOR;
+    [view_control_main addSubview:lblPlayHead];
+    
+    view_control=[[UIView alloc] initWithFrame:CGRectMake(0, 0, view_control_main.frame.size.width, 2)];
+    view_control.backgroundColor=[UIColor redColor];
+    [view_control_main addSubview:view_control];
+    
+    view_buffer=[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 2)];
+    view_buffer.backgroundColor=[UIColor yellowColor];
+    [view_control_main addSubview:view_buffer];
+    
+    view_playing=[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 2)];
+    view_playing.backgroundColor=[[UIColor redColor] colorWithAlphaComponent:0.5];
+    [view_control_main addSubview:view_playing];
+    
+    view_playhead=[[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, 2)];
+    view_playhead.backgroundColor=APP_COLOR;
+    [view_control_main addSubview:view_playhead];
+    
+    
+    UIPanGestureRecognizer *drag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragging:)];
+    [view_control_main addGestureRecognizer:drag];
+    
+    
+    view_seek_bar=[[UIView alloc]initWithFrame:CGRectMake(0, 0, 0,0)];
+    [view_control_main addSubview:view_seek_bar];
+    [view_seek_bar setBackgroundColor:APP_COLOR];
+    view_seek_bar.hidden=true;
+    
+    view_seek=[[UIView alloc]initWithFrame:CGRectMake(0, 0, 0, 0)];
+    [view_control_main addSubview:view_seek];
+    [view_seek setBackgroundColor:[UIColor greenColor]];
+    view_seek.hidden=true;
+    
+}
+
+-(void)setTopBar
+{
+    [btn_LeftCircle setImage:[self imagedraw] forState:UIControlStateNormal];
+    [btn_LeftCircle addTarget:self
+                       action:@selector(act_LeftCircle:)
+             forControlEvents:UIControlEventTouchDown];
+    
+    [btn_RightCircle setImage:[self imagedraw] forState:UIControlStateNormal];
+    [btn_RightCircle addTarget:self
+                        action:@selector(act_RightCircle:)
+              forControlEvents:UIControlEventTouchDown];
+    
+}
+
+-(void)act_LeftCircle:(UIButton *)sender{
+    
+    [self.navigationController popViewControllerAnimated:YES];
+    //    [self performSegueWithIdentifier:@"id_segue_video_play" sender:self];
+    
+    //    NSString *filepath = [[NSBundle mainBundle] pathForResource:@"2" ofType:@"MOV"];
+    //    NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    //    [moviePlayerController setContentURL:fileURL];
+    //    [moviePlayerController prepareToPlay];
+    //    [moviePlayerController play];
+    
+    
+    //    NSString *filepath2 = [NSString stringWithFormat:@"http://d3ssuh393l2cmt.cloudfront.net/29MOTOGUIDE/Bentley_Continental_GT3_Action_On_Track_640.m4v"];
+    //    //str_url=filepath;
+    //    NSURL *fileURL2 = [NSURL URLWithString: filepath2];
+    //    moviePlayerController.contentURL=fileURL2;
+    //    [moviePlayerController prepareToPlay];
+    //    [moviePlayerController play];
+    
+    
+    //http://d3ssuh393l2cmt.cloudfront.net/29MOTOGUIDE/2015_McLaren_Honda_MP4-30_640.m4v
+}
+
+-(void)act_RightCircle:(UIButton *)sender{
+    
+    //    [self performSegueWithIdentifier:@"id_segue" sender:self];
+    //    NSString *filepath = [[NSBundle mainBundle] pathForResource:@"1" ofType:@"mov"];
+    //    NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    //
+    //    // moviePlayerController.contentURL=[NSURL URLWithString: ];
+    //    moviePlayerController.contentURL=fileURL;
+    //    [moviePlayerController prepareToPlay];
+    //    [moviePlayerController play];
+    
+    
+    
+    
+    //    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(TapVideo:)];
+    //    [moviePlayerController.view addGestureRecognizer:tapGesture];
+    //
+    //
+    //    NSString *filepath2 = [NSString stringWithFormat:@"http://d3ssuh393l2cmt.cloudfront.net/29MOTOGUIDE/2015_McLaren_Honda_MP4-30_640.m4v"];
+    //    //str_url=filepath;
+    //    NSURL *fileURL2 = [NSURL URLWithString: filepath2];
+    //    moviePlayerController.contentURL=fileURL2;
+    //    [moviePlayerController prepareToPlay];
+    //    [moviePlayerController play];
+    
+}
+
+-(UIImage *)imagedraw{
+    
+    CGSize size=CGSizeMake(30, 30);
+    //UIGraphicsBeginImageContext(size);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);
+    // draw original image into the context
+    // get the context for CoreGraphics
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGContextSetLineWidth(ctx, 3);
+    CGContextSetStrokeColorWithColor(ctx, APP_COLOR.CGColor);// set stroking color and draw circle
+    // make circle rect 5 px from border
+    CGRect circleRect = CGRectMake(0,0,
+                                   30,
+                                   30);
+    circleRect = CGRectInset(circleRect, 5, 5);
+    // draw circle
+    CGContextStrokeEllipseInRect(ctx, circleRect);
+    
+    // make image out of bitmap context
+    UIImage *retImage = UIGraphicsGetImageFromCurrentImageContext();
+    
+    // free the context
+    UIGraphicsEndImageContext();
+    return retImage;
+    
+}
+
+-(void)loadStateChanged:(NSNotification *)notif
+{
+    NSString *loadState=@"";
+    switch (moviePlayerController.loadState) {
+        case MPMovieLoadStateUnknown: {
+            loadState=@"MPMovieLoadStateUnknown";
+            break;
+        }
+        case MPMovieLoadStatePlayable: {
+            loadState=@"MPMovieLoadStatePlayable";
+            //[moviePlayerController play];
+            break;
+        }
+        case MPMovieLoadStatePlaythroughOK: {
+            loadState=@"MPMovieLoadStatePlaythroughOK";
+            break;
+        }
+        case MPMovieLoadStateStalled: {
+            loadState=@"MPMovieLoadStateStalled";
+            break;
+        }
+    }
+    NSLog(@"%@", loadState);
+}
+
+- (void)orientationChanged:(NSNotification *)notification
+{
+    [self adjustViewsForOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
+}
+
+- (void) adjustViewsForOrientation:(UIInterfaceOrientation) orientation
+{
+    switch (orientation) {
+        case UIInterfaceOrientationLandscapeLeft:
+            tblview.hidden=YES;
+            NSLog(@"Landscape left");
+            moviePlayerController.view.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
+            //view_control_main.frame=CGRectMake(0, self.view.frame.size.height-(self.view.frame.size.height/4), self.view.frame.size.width, self.view.frame.size.height/4);
+            view_control_main.frame=CGRectMake(0, self.view.frame.size.height, self.view.frame.size.width, self.view.frame.size.height/4);
+            
+            view_line.frame=CGRectMake(0, CGRectGetMaxY(view_control_main.frame) , self.view.frame.size.width, 1);
+            lblPlay.frame=CGRectMake(view_control_main.bounds.size.width/3.1, 0, 200, 40);
+            view_control.frame=CGRectMake(0, 0, view_control_main.frame.size.width, 2);
+            
+            break;
+            
+        case UIInterfaceOrientationPortrait:
+            
+            tblview.hidden=NO;
+            NSLog(@"Potrait mode");
+            moviePlayerController.view.frame = CGRectMake(0, 70, self.view.frame.size.width, self.view.frame.size.height/3.2);
+            view_control_main.frame=CGRectMake(0, CGRectGetMaxY(moviePlayerController.view.frame) , self.view.frame.size.width, self.view.frame.size.height/6.8);
+            view_line.frame=CGRectMake(0, CGRectGetMaxY(view_control_main.frame)-1 , self.view.frame.size.width, 1);
+            lblPlay.frame=CGRectMake(view_control_main.bounds.size.width/3.1, 0, 200, 40);
+            view_control.frame=CGRectMake(0, 0, view_control_main.frame.size.width, 2);
+            
+            break;
+            
+        default:
+            break;
+    }
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void) tick:(NSTimer *) timer {
+    
+    if (moviePlayerController.playbackState != MPMovieLoadStateUnknown) {
+        
+        time_total=moviePlayerController.duration;
+        time_curr=moviePlayerController.currentPlaybackTime;
+        time_buff=moviePlayerController.playableDuration;
+        
+        
+        NSTimeInterval currentProgress = moviePlayerController.currentPlaybackTime;
+        
+        float min = floor(currentProgress/60);
+        float sec = round(currentProgress - min * 60);
+        
+        NSString *strPlayMinutes = [[NSString stringWithFormat:@"%02d",abs((int)min)] substringToIndex:2];
+        NSString *strPlaySeconds = [[NSString stringWithFormat:@"%02d",abs((int)sec)] substringToIndex:2];
+        
+        NSString *time = [NSString stringWithFormat:@"PLAYHEAD    %@:%@", strPlayMinutes, strPlaySeconds];
+        lblPlayHead.text=time;
+        
+        //BUFFERING
+        NSTimeInterval buffProgress = moviePlayerController.playableDuration;
+        
+        float min1 = floor(buffProgress/60);
+        float sec1 = round(buffProgress - min * 60);
+        
+        NSString *strBufMinutes = [[NSString stringWithFormat:@"%02d",abs((int)min1)] substringToIndex:2];
+        NSString *strBufSeconds = [[NSString stringWithFormat:@"%02d",abs((int)sec1)] substringToIndex:2];
+        NSString *time1 = [NSString stringWithFormat:@"BUFFERING   %@:%@", strBufMinutes, strBufSeconds];        lblBuffer.text=time1;
+        
+        int percentage = moviePlayerController.playableDuration / moviePlayerController.duration;
+        
+        if (5<(moviePlayerController.playableDuration-moviePlayerController.currentPlaybackTime)) {
+            if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying) {
+            }
+            else{
+                // [moviePlayerController play];
+            }
+        }
+        
+        //    time_total          100
+        //    time_current
+        
+        time_per_curr=(time_curr*100)/time_total;
+        time_per_buff=(time_buff*100)/time_total;
+        
+        // NSLog(@"__________________________%f",time_per_curr);
+        //    100        view_total_lenth
+        //    20
+        
+        pos_playhead=(time_per_curr*view_control_main.frame.size.width)/100;
+        pos_buff=(time_per_buff*view_control_main.frame.size.width)/100;
+        
+        //    NSLog(@"--------------------------%f",pos_playhead);
+        //    NSLog(@"--------------------------%f",pos_buff);
+        if (!isnan(pos_playhead) && !isnan(pos_buff) && !isinf(pos_playhead) && !isinf(pos_buff)) {
+            
+            view_buffer.frame=CGRectMake(0, 0, pos_buff, 2);
+            view_playing.frame=CGRectMake(0, 0, pos_playhead, 2);
+            view_playhead.frame=CGRectMake(pos_playhead, 0, 2, view_control_main.frame.size.height);
+        }
+        
+        //    if (!isnan(pos_playhead) && !isnan(pos_buff)) {
+        //
+        //        view_control.frame=CGRectMake(pos_playhead, 0,moviePlayerController.view.frame.size.width, 2);
+        //        view_buff.frame=CGRectMake(0, 0, pos_buff-pos_playhead, 2);
+        //
+        //        if (cnt_draw_view) {
+        //            [self draw_book_first];
+        //            cnt_draw_view=0;
+        //        }
+        //     }
+        
+    }
+}
+
+-(void)dragging:(UIPanGestureRecognizer *)gesture
+{
+    float per_time,drag_time,point_x,point_seek_x;
+    //NSLog(@"-------posi touch=%f            posi playhead=%f",[gesture locationInView:gesture.view].x,view_control.frame.origin.x);
+    point_x=[gesture locationInView:gesture.view].x;
+    //
+    if(gesture.state == UIGestureRecognizerStateBegan)
+    {
+        float diff=[gesture locationInView:gesture.view].x-view_playhead.frame.origin.x;
+        if (diff<0) {
+            diff=diff*(-1);
+        }
+        NSLog(@"+++++++==%f",diff);
+        if(diff<25)
+        {
+            NSLog(@"+++++++==%f",diff);
+            drag_check=true;
+            view_playhead.hidden=true;
+            view_seek_bar.hidden=false;
+            view_seek.hidden=false;
+        }
+    }
+    
+    if (drag_check)
+    {
+        view_seek.backgroundColor=APP_COLOR;
+        point_x=[gesture locationInView:gesture.view].x;
+        //view_seek.frame=CGRectMake(point_x,0,2, 7);
+        
+        view_seek.frame=CGRectMake(point_x, 0, 2, view_control_main.frame.size.height);
+        view_seek_bar.frame=CGRectMake(pos_playhead, 0, -(pos_playhead-point_x), 5);
+    }
+    
+    if (gesture.state == UIGestureRecognizerStateEnded)
+    {
+        if(drag_check){
+            
+            per_time=((100*point_x)/self.view.frame.size.width)+0.5;
+            drag_time= (per_time * moviePlayerController.duration)/100;
+            moviePlayerController.currentPlaybackTime=drag_time;
+            view_seek.backgroundColor=[UIColor clearColor];
+            view_seek_bar.hidden=true;
+            
+        }
+        drag_check=false;
+        view_playhead.hidden=false;
+    }
+    
+}
+
+#pragma mark  TableView Delegate
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return screenWidth/5.3;
+}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    
+    return arr_video_URL.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *simpleTableIdentifier = @"SimpleTableItem";
+    
+    Cell *cell = [tableView dequeueReusableCellWithIdentifier:simpleTableIdentifier];
+    
+    if (cell == nil) {
+        cell = [[Cell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:simpleTableIdentifier];
+    }
+    UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+    [cell addGestureRecognizer:longPress];
+    
+    //    if (cell == nil) {
+    //        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:simpleTableIdentifier];
+    //        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(10.0f, 0.0f, cell.frame.size.width, cell.frame.size.height/2)];
+    //        lbl.text = [arr_video_info objectAtIndex:indexPath.row];
+    //        lbl.font=[UIFont systemFontOfSize:10];
+    //        lbl.lineBreakMode=NSLineBreakByWordWrapping;
+    //        lbl.numberOfLines=0;
+    //
+    //        [cell.contentView addSubview:lbl];
+    //
+    //    }
+    
+    //cell.textLabel.text =  [arr_video_info objectAtIndex:indexPath.row];
+    cell.textLabel.text =[[NSString stringWithFormat:@"%@\n\n",[arr_video_info objectAtIndex:indexPath.row] ] uppercaseString];
+    
+    cell.textLabel.font=[UIFont systemFontOfSize:9];
+    cell.textLabel.lineBreakMode=NSLineBreakByWordWrapping;
+    cell.textLabel.numberOfLines=0;
+    cell.indentationWidth=100;
+    
+    cell.detailTextLabel.text=[[arr_video_title objectAtIndex:indexPath.row] uppercaseString];
+    cell.detailTextLabel.font=[UIFont systemFontOfSize:10];
+    //cell.detailTextLabel.lineBreakMode=NSLineBreakByWordWrapping;
+    cell.detailTextLabel.numberOfLines=2;
+    cell.detailTextLabel.textColor=APP_COLOR;
+    [cell  layoutSubviews];
+    
+    return cell;
+}
+
+-(void) handleLongPress: (UIGestureRecognizer *)longPress {
+    
+    if (longPress.state==UIGestureRecognizerStateBegan) {
+        
+        CGPoint pressPoint = [longPress locationInView:tblview];
+        NSIndexPath *indexPath = [tblview indexPathForRowAtPoint:pressPoint];
+        
+        
+        NSLog(@"--------------indexpath=%ld",(long)indexPath.row);
+        index_no=indexPath.row;
+        
+        [self setDetailView:(indexPath)];
+    }
+}
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    
+    
+    NSLog(@"....................%ld",(long)indexPath.row);
+    
+    NSString *filepath = [NSString stringWithFormat:@"%@",arr_video_URL[indexPath.row]];
+    
+    //        str_url=filepath;
+    
+    //NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    NSURL *fileURL = [NSURL URLWithString: filepath];
+    //moviePlayerController = [[MPMoviePlayerController alloc] initWithContentURL:fileURL];
+    moviePlayerController.contentURL=fileURL;
+    [moviePlayerController play];
+}
+
+-(void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if ([cell respondsToSelector:@selector(setSeparatorInset:)]) {
+        [cell setSeparatorInset:UIEdgeInsetsZero];
+    }
+    
+    if ([cell respondsToSelector:@selector(setLayoutMargins:)]) {
+        [cell setLayoutMargins:UIEdgeInsetsZero];
+    }
+    
+    
+    cell.backgroundColor=[APP_COLOR colorWithAlphaComponent:0.4];
+    
+    [UIView animateWithDuration:0.5 animations:^{
+        
+        cell.backgroundColor=[UIColor whiteColor];
+    }];
+    
+    //    CGRect textLabelFrame = cell.textLabel.frame;
+    //    textLabelFrame.origin.x += 10;
+    //    textLabelFrame.size.width -= 10;
+    //    cell.textLabel.frame = textLabelFrame;
+}
+-(void)viewDidLayoutSubviews
+{
+    if ([tblview respondsToSelector:@selector(setSeparatorInset:)]) {
+        [tblview setSeparatorInset:UIEdgeInsetsZero];
+    }
+    
+    if ([tblview respondsToSelector:@selector(setLayoutMargins:)]) {
+        [tblview setLayoutMargins:UIEdgeInsetsZero];
+    }
+}
+
+-(void)setDetailView:(NSIndexPath *)index{
+    
+    view_detail=[[UIView alloc]initWithFrame:tblview.frame];
+    [view_detail setBackgroundColor:[UIColor whiteColor]];
+    [self.view addSubview:view_detail];
+    
+    btn_subscribe = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btn_subscribe addTarget:self
+                      action:@selector(act_subscribe:)
+            forControlEvents:UIControlEventTouchUpInside];
+    btn_subscribe.frame = CGRectMake(view_control_main.frame.size.width-120, 0, 35, 35);
+    [btn_subscribe setBackgroundColor:APP_COLOR];
+    [view_detail addSubview:btn_subscribe];
+    
+    UIBezierPath* bezierPath1 = UIBezierPath.bezierPath;
+    [bezierPath1 addArcWithCenter:CGPointMake(20, 20) radius:4 startAngle:0 endAngle:2 * M_PI clockwise:YES];
+    [bezierPath1 moveToPoint:CGPointMake(30, 20)];
+    [bezierPath1 addArcWithCenter:CGPointMake(20, 20) radius:10 startAngle:0 endAngle:2 * M_PI clockwise:YES];
+    
+    [UIColor.blackColor setStroke];
+    bezierPath1.lineWidth = 2;
+    [bezierPath1 stroke];
+    
+    CAShapeLayer *shapeLayer = [CAShapeLayer layer];
+    shapeLayer.frame = btn_subscribe.bounds;
+    shapeLayer.path = bezierPath1.CGPath;
+    shapeLayer.fillColor = [UIColor clearColor].CGColor;
+    shapeLayer.strokeColor = [UIColor blackColor].CGColor;
+    shapeLayer.lineWidth = 2;
+    btn_subscribe.layer.mask = shapeLayer;
+    
+    btn_link = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btn_link addTarget:self
+                 action:@selector(act_link:)
+       forControlEvents:UIControlEventTouchUpInside];
+    btn_link.frame = CGRectMake(view_control_main.frame.size.width-50, 0, 35, 35);
+    [btn_link setBackgroundColor:APP_COLOR];
+    [view_detail addSubview:btn_link];
+    
+    UIBezierPath* bezierPath2 = UIBezierPath.bezierPath;
+    
+    [bezierPath2 addArcWithCenter:CGPointMake(20, 20) radius:10 startAngle:0 endAngle:2 * M_PI clockwise:YES];
+    [bezierPath2 moveToPoint:CGPointMake(20, 10)];
+    [bezierPath2 addLineToPoint:CGPointMake(20,20)];
+    [UIColor.blackColor setStroke];
+    bezierPath2.lineWidth = 2;
+    [bezierPath2 stroke];
+    
+    CAShapeLayer *shapeLayer2 = [CAShapeLayer layer];
+    shapeLayer2.frame = btn_link.bounds;
+    shapeLayer2.path = bezierPath2.CGPath;
+    shapeLayer2.fillColor = [UIColor clearColor].CGColor;
+    shapeLayer2.strokeColor = [UIColor blackColor].CGColor;
+    shapeLayer2.lineWidth = 2;
+    btn_link.layer.mask = shapeLayer2;
+    
+    
+    UILabel *lbl_subscribe=[[UILabel alloc]initWithFrame:CGRectMake(view_control_main.frame.size.width-120, 25, 100, 35)];
+    lbl_subscribe.text=@"SUBSCRIBE";
+    [lbl_subscribe setFont:[UIFont systemFontOfSize:8]];
+    lbl_subscribe.textColor=[UIColor blackColor];
+    [view_detail addSubview:lbl_subscribe];
+    
+    UILabel *lbl_link=[[UILabel alloc]initWithFrame:CGRectMake(view_control_main.frame.size.width-40, 25, 50, 35)];
+    lbl_link.text=@"LINK";
+    [lbl_link setFont:[UIFont systemFontOfSize:8]];
+    lbl_link.textColor=[UIColor blackColor];
+    [view_detail addSubview:lbl_link];
+    
+    UILabel *lbl_title=[[UILabel alloc]initWithFrame:CGRectMake(20, 50, view_control_main.frame.size.width-40, 35)];
+    lbl_title.text=[arr_video_title objectAtIndex:index.row];
+    [lbl_title setFont:[UIFont systemFontOfSize:10]];
+    lbl_title.lineBreakMode=NSLineBreakByCharWrapping;
+    lbl_title.numberOfLines=2;
+    lbl_title.textColor=APP_COLOR;
+    [view_detail addSubview:lbl_title];
+    
+    
+    //    UITextView *tv=[[UITextView alloc]initWithFrame:CGRectMake(70, 50, view_control_main.frame.size.width, 50) textContainer:<#(NSTextContainer *)#>]
+    
+    //    UITextView *tv=[[UITextView alloc] initWithFrame:CGRectMake(20, 200, view_control_main.frame.size.width-40, (view_detail.frame.size.height-CGRectGetMaxX(lbl_title.frame))-100)];
+    
+    UITextView *tv=[[UITextView alloc] initWithFrame:CGRectMake(15, CGRectGetMaxY(lbl_title.frame), view_detail.frame.size.width-30, (view_detail.frame.size.height-CGRectGetMaxY(lbl_title.frame))-10)];
+    
+    //print(CGRectGetMaxY(lbl_title.frame)-view_detail.frame.size.height);
+    
+    NSLog(@"-----%f",CGRectGetMaxY(lbl_title.frame)-view_detail.frame.size.height);
+    
+    float val=CGRectGetMaxY(lbl_title.frame)-view_detail.frame.size.height;
+    
+    tv.text=[NSString stringWithFormat:@"%@",[arr_video_descri objectAtIndex:index_no]];
+    tv.font=[UIFont systemFontOfSize:8];
+    tv.backgroundColor=[UIColor whiteColor];
+    tv.editable=false;
+    [view_detail addSubview:tv];
+    
+    UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture_detail:)];
+    tapGestureRecognizer.delegate = self;
+    [view_detail addGestureRecognizer:tapGestureRecognizer];
+}
+
+-(void)act_subscribe:(UIButton *)sender
+{
+    NSUserDefaults *def=[NSUserDefaults standardUserDefaults];
+    BOOL match=NO;
+    
+    NSLog(@"dssdsd");
+    NSString *str_URL=arr_video_URL[index_no];
+    NSString *str_name=arr_video_title[index_no];
+    
+    if([def objectForKey:@"k_sunscribe_URL"] != nil)
+    {
+        NSMutableArray *arr_url=[[def objectForKey:@"k_sunscribe_URL"] mutableCopy];
+        NSMutableArray *arr_name=[[def objectForKey:@"k_sunscribe_name"] mutableCopy];
+        
+        NSLog(@"!!!!%@",arr_url);
+        
+        for (NSMutableArray *arr in arr_url){
+            
+            NSString *str1=arr;
+            if([str1 isEqualToString:str_URL]){
+                match=YES;
+            }
+            NSLog(@"****%@",str1);
+        }
+        
+        if (!match) {
+            [arr_url addObject:str_URL];
+            [arr_name addObject:str_name];
+            [def setObject:arr_url forKey:@"k_sunscribe_URL"];
+            [def setObject:arr_name forKey:@"k_sunscribe_name"];
+        }
+        NSLog(@"------%@",arr_url);
+        NSLog(@"------%@",arr_name);
+    }
+    else
+    {
+        NSMutableArray *arr1=[[NSMutableArray alloc]initWithObjects:str_URL, nil];
+        NSMutableArray *arr2=[[NSMutableArray alloc]initWithObjects:str_name, nil];
+        [def setObject:arr1 forKey:@"k_sunscribe_URL"];
+        [def setObject:arr2 forKey:@"k_sunscribe_name"];
+    }
+}
+
+-(void)act_link:(UIButton *)sender
+{
+    //    NSLog(@"trtrtrwwq");
+    //    NSUserDefaults *def=[NSUserDefaults standardUserDefaults];
+    //    BOOL match=NO;
+    //
+    //    NSLog(@"dssdsd");
+    //    NSString *str_URL=arr_video_URL[index_no];
+    //    NSString *str_name=arr_video_title[index_no];
+    //
+    //    if([def objectForKey:@"k_sunscribe_URL"] != nil) {
+    //
+    //        NSMutableArray *arr_url=[[def objectForKey:@"k_link_URL"] mutableCopy];
+    //        NSMutableArray *arr_name=[[def objectForKey:@"k_link_name"] mutableCopy];
+    //
+    //        NSLog(@"!!!!%@",arr_url);
+    //
+    //        for (NSMutableArray *arr in arr_url){
+    //
+    //            NSString *str1=arr;
+    //            if([str1 isEqualToString:str_URL]){
+    //                match=YES;
+    //            }
+    //
+    //            NSLog(@"****%@",str1);
+    //        }
+    //
+    //        if (!match) {
+    //            [arr_url addObject:str_URL];
+    //            [arr_name addObject:str_name];
+    //            [def setObject:arr_url forKey:@"k_link_URL"];
+    //            [def setObject:arr_name forKey:@"k_link_name"];
+    //        }
+    //
+    //        NSLog(@"------%@",arr_url);
+    //        NSLog(@"------%@",arr_name);
+    //    }
+    //    else{
+    //
+    //        NSMutableArray *arr1=[[NSMutableArray alloc]initWithObjects:str_URL, nil];
+    //        NSMutableArray *arr2=[[NSMutableArray alloc]initWithObjects:str_name, nil];
+    //        [def setObject:arr1 forKey:@"k_link_URL"];
+    //        [def setObject:arr2 forKey:@"k_link_name"];
+    //
+    //    }
+    
+    NSString *str_URL=arr_video_URL[index_no];
+    
+    UIWebView *web=[[UIWebView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:str_URL]];
+    
+}
+/*
+ #pragma mark - Navigation
+ 
+ // In a storyboard-based application, you will often want to do a little preparation before navigation
+ - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+ // Get the new view controller using [segue destinationViewController].
+ // Pass the selected object to the new view controller.
+ }
+ */
+
+@end

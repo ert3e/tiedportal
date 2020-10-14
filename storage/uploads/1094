@@ -1,0 +1,114 @@
+<?php 
+ini_set('max_execution_time',10000); //300 seconds = 5 minutes
+require "app/Mage.php";
+
+$compilerConfig = 'includes/config.php';
+
+if (file_exists($compilerConfig)) {
+
+    include $compilerConfig;
+
+}
+
+$mageFilename = 'app/Mage.php';
+
+$maintenanceFile = 'maintenance.flag';
+
+if (!file_exists($mageFilename)) {
+
+    if (is_dir('downloader')) {
+
+        header("Location: downloader");
+
+    } else {
+
+        echo $mageFilename." was not found";
+
+    }
+
+    exit;
+
+}
+
+if (file_exists($maintenanceFile)) {
+
+    include_once dirname(__FILE__) . '/errors/503.php';
+
+    exit;
+
+}
+
+	// Set an Admin Session
+	Mage::app()->setCurrentStore(Mage_Core_Model_App::ADMIN_STORE_ID);
+
+	Mage::getSingleton('core/session', array('name'=>'adminhtml'));
+
+	$userModel = Mage::getModel('admin/user');
+
+	$userModel->setUserId(1);
+
+	$session = Mage::getSingleton('admin/session');
+
+	$session->setUser($userModel);
+
+	$session->setAcl(Mage::getResourceModel('admin/acl')->loadAcl());
+
+    $file = 'productlist.csv';
+
+	if (($handle = fopen($file, 'r')) !== false)
+	{
+		while (($data = fgetcsv($handle,1000, ',')) !== false)
+ 		{
+            $line2=explode(";",$data[0]);
+			// Then we see if the product exists already, by SKU since that is unique to each product
+			$product1 = Mage::getModel('catalog/product')->loadByAttribute('sku',$line2[7]);
+			if(!$product1){  
+			
+					$product = new Mage_Catalog_Model_Product();
+					$product->setTypeId('simple');
+					$product->setWeight($line2[9]);
+					$product->setVisibility(Mage_Catalog_Model_Product_Visibility::VISIBILITY_BOTH);
+					$product->setStatus($line2[6]);
+					$product->setSku($line2[7]);
+					$product->setTaxClassId($line2[10]);
+					$product->setWebsiteIDs(array(0)); // your website ids
+					$product->setStoreIDs(array(0));  // your store ids
+					$product->setStockData(array(
+						'is_in_stock' => $line2[11],
+						'qty' => $line2[10],
+						'manage_stock' => 0,
+					));
+
+					$product->setAttributeSetId(4);
+					$product->setName($line2[2]);
+					$product->setCategoryIds(array(13,8)); // array of categories it will relate to
+					$product->setDescription($line2[3]);
+					$product->setShortDescription($line2[4]);
+					$product->setPrice($line2[5]);
+					$product->setManufactureerProductNumber($line2[12]);
+					$product->setVendorId($line2[13]);
+					$product->setVendorProductId($line2[14]);
+					$product->setManufactureer($line2[15]);
+					
+					$image = 'magento_new/chris/Section5images/JPEG/25mmzw_thumb.jpg';	 
+
+					$product->setMediaGallery (array('images'=>array (), 'values'=>array ()));
+					$product->addImageToMediaGallery ($image, array ('image'), false, false);
+					$product->addImageToMediaGallery ($image, array ('small_image'), false, false);
+					$product->addImageToMediaGallery ($image, array ('thumbnail'), false, false);
+					
+				try
+				{
+					$product->save();
+					echo "Product Imported Successessfully";
+				}
+
+				catch (Mage_Core_Exception $e)
+				{
+					print_r($e);
+				} 
+
+			}
+		}
+	}
+?>

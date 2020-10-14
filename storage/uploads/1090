@@ -1,0 +1,24 @@
+<?php 
+require_once '../app/Mage.php';
+Mage::app('default');
+$productList = Mage::getModel('catalog/product')->getCollection()->addAttributeToSelect('*');
+foreach ($productList as $product)
+{
+
+	$configurable = $product->isConfigurable() ?  $configurable = 'yes' : $configurable = 'no';
+
+	echo $product->getData('name').' - ID: '.$product->getId().' - Configurable: '.$configurable;
+	echo ' - Status: '.$product->getStatus();
+	echo '<br/>';
+
+	$attributes = $product->getAttributes();
+
+	foreach ($attributes as $attribute)
+	{
+		$value = $attribute->getFrontend()->getValue($product);
+		$label = $attribute->getFrontend()->getLabel();
+		echo $label.': '.$value.'<br/>';
+	}
+	echo '<hr/></hr />';
+}
+?>

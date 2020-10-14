@@ -1,0 +1,67 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
+{\fonttbl\f0\fswiss\fcharset0 ArialMT;\f1\fmodern\fcharset0 Courier;\f2\froman\fcharset0 Times-Roman;
+}
+{\colortbl;\red255\green255\blue255;\red53\green53\blue53;\red31\green33\blue89;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sl440\partightenfactor0
+
+\f0\fs28 \cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 -----BEGIN CERTIFICATE REQUEST-----\
+MIIDFjCCAf4CAQAwgacxCzAJBgNVBAYTAkdCMRYwFAYDVQQIEw1IZXJ0Zm9yZHNo\
+aXJlMRIwEAYDVQQHEwlTdGV2ZW5hZ2UxFjAUBgNVBAoTDUJyaXRpc2ggUGFydHMx\
+CzAJBgNVBAsTAklUMR8wHQYDVQQDExZ3d3cuYnJpdGlzaHBhcnRzLmNvLnVrMSYw\
+JAYJKoZIhvcNAQkBFhdyaWNreUB3ZWJnZW5pZWx0ZC5jby51azCCASIwDQYJKoZI\
+hvcNAQEBBQADggEPADCCAQoCggEBAMGa1huju3/bgwN52yM4QDJ51mT0rQat1HDi\
+DLZUzGFqQs25Wp+2AQVq7M1kuaBZVBUPN/w0m9YgHVDwBPHcOnx0U9Glkh9USnd7\
+5aAq22w3wk+D19ix7mKonyVuQ7VRF4GvBztXHw1bA08ArXeu7kvXchI2L+X4lR90\
+9Fubk62cgvEkpC2Q9lCoEy7w3TG3DdQd65r3KP9ibcIJ/JceblOjVv2zfRsxru3V\
+Gtg1Ck7ybpW0Mdipgek1e8SJaWQNXWd6mA1oDJYCyPBGJPoQMChfCMt6OL1pLMgc\
+K66nK6qZ/lJJK2hAmgcuQ4Jxc6E2XF25IMtoR7W4gmkAlb3VSxECAwEAAaApMCcG\
+CSqGSIb3DQEJDjEaMBgwCQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwDQYJKoZIhvcN\
+AQELBQADggEBAG22xAxm9/KDrW19tHDRLWBPrLBu4OBB+4S3gq+inwMZL6Dr4Le+\
+k14dOnncx+tPa1hcFDDOuO6kUHGKp+vc67BSdBBcBPnsK++RAzzFpcNGUR6ziQ+j\
+oSxUHPSaLI88DVfaO4ZVNVHLnYK+uE+13C4TB1WraJ7ru+dlt7rAOyZ+ca5+kbYC\
+mIji9j4pL7oLkpgEz/vO7F2HhsyM5UAwwyySjTLQR1cjVC3+CsCn0eNOECA+aKUD\
+QHIcRC6Yj5UYcnu16V5nmuVp4/HnR3MnZ0eLwkKwfOQ47w7PAA4NTgOe1C66PjwH\
+K6pItIpev0lKvyf0eoo6fPfbpSOzfXuzWmA=\
+-----END CERTIFICATE REQUEST-----\
+\pard\pardeftab720\sl440\partightenfactor0
+
+\f1 \cf2 \
+\pard\pardeftab720\sl440\partightenfactor0
+
+\f2\fs44 \cf3 \strokec3 Your Private Server Key\
+\pard\pardeftab720\sl440\partightenfactor0
+
+\f0\b\fs28 \cf2 \strokec2 Save this as a .TXT file and keep it secure - your SSL certificate WILL NOT WORK without this.
+\b0 \uc0\u8232 \
+-----BEGIN PRIVATE KEY-----\
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDBmtYbo7t/24MD\
+edsjOEAyedZk9K0GrdRw4gy2VMxhakLNuVqftgEFauzNZLmgWVQVDzf8NJvWIB1Q\
+8ATx3Dp8dFPRpZIfVEp3e+WgKttsN8JPg9fYse5iqJ8lbkO1UReBrwc7Vx8NWwNP\
+AK13ru5L13ISNi/l+JUfdPRbm5OtnILxJKQtkPZQqBMu8N0xtw3UHeua9yj/Ym3C\
+CfyXHm5To1b9s30bMa7t1RrYNQpO8m6VtDHYqYHpNXvEiWlkDV1nepgNaAyWAsjw\
+RiT6EDAoXwjLeji9aSzIHCuupyuqmf5SSStoQJoHLkOCcXOhNlxduSDLaEe1uIJp\
+AJW91UsRAgMBAAECggEAHclXtarsNxCryIYf+/w0jE+Id8HZORTXgYKV2BuV0ksJ\
++iLRWY8j+xRnWHZtxMjZkd/kii4B5+DLAd/bsuZiLTGsj628nItYZaevPYQ6fBzc\
+DWXIeLNvbMhqq9SaIDRYvIAUScHuqhxdlvMQvUAxs4NzLnAd0HD9aHiS++EkyGnu\
+bjTchvrT3n8exvUG5OzlcNhjimpP21ouUinsP0qPVDeLjFEr8NeUA3LDIz7xvmwT\
+Kj1bJbfSiVh9nUCtAwhvwJsJVrS2GPZVBX/52h1EnM8fAUx5Y9R0u1RwSbQsj3uM\
+qnL9bVrrc4QzKFJk+pbpI4o96CR+gjz6/ruYjqoiUQKBgQDshJ2ehVQA3dnOlfb6\
+IFzwaz5Y4+eKCDlqm5rN4HzJALWmepiy9YILfhKXYmu8FegygM9uCQQYXS+KWPwb\
+BxV7klgW1t6M++wS+DeeCoioNJhNaIaj0QKtmQtl+IE5nDITgqLkRUBNk0tVkfdC\
+nA+t7di9yqJOr0w+uqNx2UDKfQKBgQDRjVKtGnsXFL0fjXrRRWfD18cqCkPw+zi2\
+Dz9qMe02wmP76/gtcb05sIiV8XsU2/Evm4UJmrXVKvWX53G6BWOqQR7mn9M73yL5\
+aDoCjcCWcpO6yrsMOEr16NWgATzqhj2QbOTdlbN5wu6d5i4+mpHbPNWcPv4EBoMV\
+WlxyhE/TJQKBgQCg1dWxdI0ZQcPZXdVjZhqNSwBMxj4veURCIKp2kc+JiDf+i6PH\
+HnhehE70LvOAJY2OulVUSEFGqCep9rUJVBnhvDS240rXqIByreR0Tkl7yLhA+3GD\
+eKBPmKFNqF2H5ZWP+uf2Prlph15VRDtWSnXHGtSmy2LwCvjYN2bqBoiuqQKBgQCN\
+PC4MA7wQm2a4fHfZ0miUg7t1p0ORiRD5DB/WqF3UOYKACdPUdUNvPX9haEdnkLHn\
+P2+UQJTrXq/2uQRat0UsPAXitLf/M250IP5wODAkdocBL6CQJOTJByvsUslG3EFk\
+NTCv9DTqDSsce0aR5UYHOOJUE9TKy8TPwH5spKbUjQKBgFNEs9sairITNGBqm28J\
+xru8grvL60MM2tLOA4pd4Jc0RAvmbhA6hzlsPHCngy7wWsZq2QJFgdcnHW9vDNfE\
+mcg9Vdhi4FNt+ZUsmpdcC546CfT5CFfNDpm/jscqi4+UQILlAHVBEoYzijN3h5EM\
+VFo3D3jS94iJkzaY4SukmMpj\
+-----END PRIVATE KEY-----\
+}

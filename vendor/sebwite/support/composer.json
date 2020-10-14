@@ -1,0 +1,48 @@
+{
+    "name": "sebwite/support",
+    "description": "Laravel 5 support package",
+    "keywords": ["laravel", "sebwite", "support", "repositories", "structure"],
+    "license": "MIT",
+    "authors": [
+        {"name": "Sebwite", "homepage": "http://sebwite.nl", "email": "info@sebwite.nl"},
+        {"name": "Robin Radic", "homepage": "https://github.com/robinradic", "email": "robin@sebwite.nl", "role": "Developer"}
+    ],
+
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=5.5.9",
+        "sebwite/contracts": "1.0.*",
+        "illuminate/support": ">5.0.0 <5.3.0",
+        "gabrielelana/byte-units": "0.2.*"
+    },
+    "require-dev": {
+        "sebwite/testing": "1.0.*",
+        "sebwite/phing": "1.0.*",
+        "danielstjules/stringy": "~1.8|~2.0",
+        "anahkiasen/underscore-php": "2.0.*",
+        "orchestra/testbench": "~3.2"
+    },
+    "suggest": {
+        "danielstjules/stringy": "Incorperates more string manipulation functionality into the Str helper. (~1.8|~2.0)",
+        "anahkiasen/underscore-php": "Incorperates more string and array manipulation functionality into the Str and Arr helpers (2.0.*)"
+    },
+    "autoload": {
+        "files": [
+            "src/helpers.php"
+        ],
+        "psr-4": {
+            "Sebwite\\Support\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sebwite\\Tests\\Support\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-develop": "2.0.x-dev"
+        }
+    }
+}

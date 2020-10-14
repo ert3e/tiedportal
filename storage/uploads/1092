@@ -1,0 +1,105 @@
+//
+//  TimePickerController.m
+//  Ecopark
+//
+//  Created by Samiflabs on 01/09/16.
+//  Copyright © 2016 Samiflabs. All rights reserved.
+//
+
+#import "TimePickerController.h"
+
+@interface TimePickerController ()
+{
+    NSMutableArray *arrTimePicker;
+    NSMutableArray *arrSelItems;
+    BOOL flag;
+}
+@end
+@implementation TimePickerController
+@synthesize tbl_Time;
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    [self initController];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+}
+
+-(void)initController
+{
+    arrTimePicker = [[NSMutableArray alloc]initWithObjects:@"Sunday",@"Monday",@"Tuesday",@"Wednesday",@"Thursday",@"Friday",@"Saturday",nil];
+    arrSelItems = [[NSMutableArray alloc]init];
+    [tbl_Time reloadData];
+    tbl_Time.tableFooterView = [[UIView alloc]initWithFrame:CGRectZero];
+}
+
+#pragma mark - TableView Delegates
+-(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    TimePickerCell *cell = (TimePickerCell*)[tableView dequeueReusableCellWithIdentifier:@"TimePickerCell"];
+    cell.lbl_day.text = [arrTimePicker objectAtIndex:indexPath.row];
+    [cell.bt_day setBackgroundImage:[UIImage imageNamed:@"unchecked"] forState:UIControlStateNormal];
+    [cell.bt_day setTag:indexPath.row];
+    return cell;
+}
+
+-(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return arrTimePicker.count;
+}
+
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    TimePickerCell *cell = (TimePickerCell*)[tableView cellForRowAtIndexPath:indexPath];
+    UIImage *imgCell = cell.bt_day.currentBackgroundImage;
+    UIImage *imgChecked = [UIImage imageNamed:@"checked"];
+    
+    if ([imgCell isEqual:imgChecked])
+    {
+        [cell.bt_day setBackgroundImage:[UIImage imageNamed:@"unchecked"] forState:UIControlStateNormal];
+        [arrSelItems removeObject:[arrTimePicker objectAtIndex:indexPath.row]];
+        [cell.contentView setBackgroundColor:[UIColor clearColor]];
+        flag = false;
+    }
+    else
+    {
+        [cell.bt_day setBackgroundImage:[UIImage imageNamed:@"checked"] forState:UIControlStateNormal];
+        [arrSelItems addObject:[arrTimePicker objectAtIndex:indexPath.row]];
+        [cell.contentView setBackgroundColor:[[UIColor blackColor] colorWithAlphaComponent:0.2]];
+        flag = true;
+    }
+}
+
+-(void)tableView:(UITableView *)tableView didDeselectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    TimePickerCell *cell = (TimePickerCell*)[tableView cellForRowAtIndexPath:indexPath];
+    UIImage *imgCell = cell.bt_day.currentBackgroundImage;
+    UIImage *imgChecked = [UIImage imageNamed:@"unchecked"];
+    if ([imgCell isEqual:imgChecked])
+    {
+        [cell.bt_day setBackgroundImage:[UIImage imageNamed:@"unchecked"] forState:UIControlStateNormal];
+        [arrSelItems removeObject:[arrTimePicker objectAtIndex:indexPath.row]];
+        [cell.contentView setBackgroundColor:[UIColor clearColor]];
+        flag = false;
+    }
+    else
+    {
+        [cell.bt_day setBackgroundImage:[UIImage imageNamed:@"checked"] forState:UIControlStateNormal];
+        [arrSelItems addObject:[arrTimePicker objectAtIndex:indexPath.row]];
+        [cell.contentView setBackgroundColor:[[UIColor blackColor] colorWithAlphaComponent:0.2]];
+        flag = true;
+    }
+}
+
+- (IBAction)BTDoneTap:(id)sender
+{
+    NSLog(@"Array Items %@",arrSelItems);
+    
+}
+
+
+
+
+
+@end

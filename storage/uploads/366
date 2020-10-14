@@ -1,0 +1,10 @@
+<a class="topbasket" href="/checkout/cart/">
+	BASKET / CHECKOUT
+	<?php 
+	$total = $this->helper('checkout')->formatPrice(Mage::getSingleton('checkout/cart')->getQuote()->getGrandTotal());
+    $total1 = str_replace(" ", "", $total);
+    echo "(";
+    echo $total1;
+    echo ")";
+	?>
+</a>

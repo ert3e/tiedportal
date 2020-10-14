@@ -1,0 +1,35 @@
+//
+//  OfferParkingController.h
+//  Ecopark
+//
+//  Created by Samiflabs on 31/08/16.
+//  Copyright © 2016 Samiflabs. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "TimePickerController.h"
+
+@interface OfferParkingController : UITableViewController<UIImagePickerControllerDelegate,UITableViewDataSource,UITableViewDelegate>
+@property (strong, nonatomic) IBOutlet UITableView *tblOffer;
+
+
+//Property ImageButton
+@property (strong, nonatomic) IBOutlet UIButton *BTImage1;
+@property (strong, nonatomic) IBOutlet UIButton *BTImage2;
+@property (strong, nonatomic) IBOutlet UIButton *BTImage3;
+
+@property (strong, nonatomic) IBOutlet UILabel *LBFrom;
+@property (strong, nonatomic) IBOutlet UILabel *LBTo;
+@property (strong, nonatomic) IBOutlet UILabel *LBDays;
+
+
+- (IBAction)BTImage1Tap:(id)sender;
+- (IBAction)BTImage2Tap:(id)sender;
+- (IBAction)BTImage3Tap:(id)sender;
+
+
+- (IBAction)BTFromTap:(id)sender;
+- (IBAction)BTToTap:(id)sender;
+- (IBAction)BTDayTap:(id)sender;
+
+@end

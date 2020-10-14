@@ -1,0 +1,37 @@
+<?php
+
+ini_set('html_errors', 0);
+
+$ch = curl_init();
+$uri= 'http://api.beta.werkspot.nl/orders';
+
+curl_setopt($ch, CURLOPT_URL, $uri);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/x-www-form-urlencoded'));
+//curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Basic bWF5dXIuamFkZWphQHNhbWlmbGFicy5jb206MTIzNDU2YW1h'));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Basic d2Vya3Nwb3QudGlqcytBUElfVGVzdF8wMUBnbWFpbC5jb206dGVzdDEyMw=='));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Api-Key: 2b01dc32d5c96fcde290a947c118dd03c265701d'));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: */*'));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Connection: keep-alive'));
+curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept-Language: en'));
+//curl_setopt($ch, CURLOPT_HTTPHEADER, array('Origin: chrome-extension: //rest-console-id'));
+//curl_setopt($ch, CURLOPT_HTTPHEADER, array('User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/535.19 (KHTML, likeGecko) Chrome/18.0.1025.113 Safari/535.19'));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_POST, 1); 
+curl_setopt($ch, CURLOPT_POSTFIELDS,"category_id=".urlencode("48") ."&title=".urlencode("Test")
+																   ."&description=".urlencode("TestOrder")
+																   ."&material=".urlencode("c")
+																   ."&start_date=".urlencode("2012-06-16")
+																   ."&quotation_type=".urlencode("t")
+																   ."&auction_period=".urlencode("10")
+																   );
+
+$response = curl_exec($ch);
+echo '<pre>';
+print_r(curl_getinfo($ch));
+var_dump(json_decode($response));
+echo curl_errno($ch) . '-' .
+curl_error($ch);
+echo '</pre>';
+curl_close($ch);
+?>

@@ -1,0 +1,93 @@
+﻿using System;
+using System.Net;
+using System.Net.Mail;
+using System.Text;
+using System.Web;
+
+namespace SignedNote
+{
+    public static class Email
+    {
+        public static Tuple<int, string> SendEmail(StringBuilder Mailcontent, string To, string Subject, string FilePath)
+        {
+            int status = 1;
+            string message = "E-mail sent succeessfully.";
+            try
+            {
+                MailMessage mailmessage = new MailMessage();
+                SmtpClient smtpClient = new SmtpClient();
+                string GmailEmailID = "noreply@ephg.limited";
+                string GmailPassword = "aVMG7C%C";
+
+                MailAddress fromAddress = new MailAddress(GmailEmailID);
+                if (FilePath != "")
+                {
+                    Attachment PDFfile = new Attachment(FilePath);
+                    mailmessage.Attachments.Add(PDFfile);
+                }
+                mailmessage.From = fromAddress;
+                mailmessage.To.Add(To);
+                mailmessage.Subject = Subject;
+                mailmessage.IsBodyHtml = true;
+                mailmessage.Body = Mailcontent.ToString();
+
+                smtpClient.Host = "smtp-relay.gmail.com";
+                smtpClient.Port = 587;
+                smtpClient.EnableSsl = true;
+                smtpClient.UseDefaultCredentials = true;
+                smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                smtpClient.Credentials = new NetworkCredential(GmailEmailID, GmailPassword);
+
+                smtpClient.Send(mailmessage);
+            }
+            catch (Exception e)
+            {
+                status = 0;
+                message = e.Message;
+            }
+            return Tuple.Create(status, message);
+        }
+
+        //public static Tuple<int, string> SendEmail(StringBuilder Mailcontent, string To, string Subject, string AttachmentGroup)
+        //{
+        //    int status = 1;
+        //    string message = "E-mail sent succeessfully.";
+        //    //try
+        //    {
+        //        string From = Global.FromMailID;
+        //        string OrganiserName = Global.OrganiserName;
+        //        string SERVER = Global.MailServer;
+        //        MailMessage oMail = new MailMessage();
+        //        if (OrganiserName.Length > 1)
+        //            oMail.From = OrganiserName + "<" + From + ">";
+        //        else
+        //            oMail.From = From;
+        //        oMail.To = To;
+        //        oMail.Subject = Subject;
+        //        string[] ListAttachment = AttachmentGroup.Split(',');
+        //        for (int i = 0; i < ListAttachment.Length; i++)
+        //        {
+        //            string Attachment = ListAttachment[i];
+        //            if (Attachment != "")
+        //            {
+        //                MailAttachment attachment = new MailAttachment(Attachment);
+        //                oMail.Attachments.Add(attachment);
+        //            }
+        //        }
+
+        //        oMail.BodyFormat = MailFormat.Html;
+        //        oMail.Priority = MailPriority.High;
+        //        oMail.Body = Mailcontent.ToString();
+        //        SmtpMail.SmtpServer = SERVER;
+        //        SmtpMail.Send(oMail);
+        //        oMail = null;
+        //    }
+        //    //catch (Exception e)
+        //    //{
+        //    //    status = 0;
+        //    //    message = e.Message;
+        //    //}
+        //    return Tuple.Create(status, message);
+        //}
+    }
+}

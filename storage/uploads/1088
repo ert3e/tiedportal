@@ -1,0 +1,67 @@
+<?php
+
+ini_set('max_execution_time', 600000); // if products are more in amount then we get time out error..so to avoid that we use this..
+ini_set('memory_limit', '1024M'); // if products are more in amount then we get time out error..so to avoid that we use this..
+
+# path to app/Mage.php
+$mageFilename = 'app/Mage.php'; // As we will call this file in root of magento..and we need to call it's all functions..so we include it's main file here.
+require_once $mageFilename;
+
+if (class_exists('Mage'))
+{
+	# this is important, otherwise you'll get errors when trying to # work with
+	Mage::app()->setCurrentStore(Mage_Core_Model_App::ADMIN_STORE_ID);
+ 
+	# product model, to access all functions of Catalog object to export products and to get it's values.
+	$model = Mage::getModel('catalog/product');
+ 
+	# default attribute set id (usually "default")
+	$attribute_set = Mage::getModel('eav/entity_type')->loadByCode('catalog_product')->getDefaultAttributeSetId();
+ 	
+	Mage::getSingleton('index/indexer')->lockIndexer(); // After script run we need to do re-indexing..so we use this..
+				
+    $headers = 'sku, name, description,Product_urlpath,image_url,category_name,price,manufacturer'; // define Header of CSV file.
+    $fp = fopen("file.csv", "w"); // define file name and path in ftp
+    fwrite($fp,$headers);
+  
+    $product = Mage::getModel('catalog/product')->getCollection(); // Get all products collection from magento with all detail..
+    foreach($product as $products)
+		{
+			$sku = $products->getSku(); // in magento we can get any attrbiute value in this manner, getAttributename(), so use that here with product model class
+			$product_id = $products['entity_id'];
+            $obj = Mage::getModel('catalog/product'); // create object of Model class.
+            $_product = $obj->load($product_id); // Enter your Product Id in $product_id, load that id in that created object.
+            $Url_path = $_product->getUrl_path(); 
+            $image_url = "http://mg1.samifgroup.com/media/catalog/product". $_product->getImage();
+            $categories = $_product->getCategoryIds(); 
+
+			foreach ($categories as $catid) { //  now to get particular category id..
+				$categoryname = Mage::getModel('catalog/category')->load($catid)->getName(); // get category name from that id..using category model.
+			}
+
+			$price = $_product->getPrice(); // get price..
+			$manufacturer =  $_product->getAttributeText('manufacturer');
+            //echo "<pre>"; print_r($_product); echo "</pre>" ; // to check whether all data coming correctly or not..remove this line once script completed..
+			$name = $_product->getName();
+			$description = $_product->getDescription();
+			$path = $_product->getUrl_path();
+			echo $product_id . "," . $name . "," . $name;
+			echo "<br>";
+			$list = array (//'sku','name','description',
+			array($sku,$name,$description,$Url_path,$image_url,$categoryname,$price,$manufacturer),);
+
+			foreach ($list as $fields) {
+				//if($row == 1){
+				fputcsv($fp, $fields); // put all product data in CSV file with values as per get from above..
+			}		
+			
+		}
+} 	
+	Mage::getSingleton('index/indexer')->unlockIndexer(); // after that alwasy do re-indexing..so we use this..
+    fclose($fp); // make sure to close ftp connection, to avoid all other problems as well as for security reasons..
+?>
+
+
+
+
+

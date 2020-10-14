@@ -1,0 +1,3047 @@
+//
+//  Main_ViewController.m
+//  VideoPodcast
+//
+//  Created by Samir Vohra on 19/01/16.
+//  Copyright (c) 2016 mobileappdeveloper. All rights reserved.
+//
+
+#import "VideoPageController.h"
+#import <AVFoundation/AVFoundation.h>
+#import "HCYoutubeParser.h"
+
+@interface VideoPageController ()
+{
+    NSInteger cur_playVideo;
+}
+@end
+
+@implementation VideoPageController
+@synthesize ScrollView,table_view,cnst_table_height,cnst_video_width,btnSetting,moviePlayerController;
+
+- (id)initWithCoder:(NSCoder *)aDecoder
+{
+    @try
+    {
+        self = [super initWithCoder:aDecoder];
+        cnt_draw_view=1;
+        tap=NO;
+        if (self) {
+            // Custom initialization
+            NSLog(@"Was called...");
+        }
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(MPMoviePlayerPlaybackStateDidChange:)
+                                                     name:MPMoviePlayerPlaybackStateDidChangeNotification
+                                                   object:nil];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self  selector:@selector(orientationChanged:)    name:UIDeviceOrientationDidChangeNotification  object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(loadStateChanged:) name:MPMoviePlayerLoadStateDidChangeNotification object:nil];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playbackDidFinish:) name:MPMoviePlayerPlaybackDidFinishNotification object:moviePlayerController];       //  ^
+        
+        arr_video_title=[[NSMutableArray alloc]init];
+        arr_video_info=[[NSMutableArray alloc]init];
+        arr_URL=[[NSMutableArray alloc]init];
+        arr_video_type=[[NSMutableArray alloc]init];
+        
+        cnt_timer=1;
+        
+        
+        [self Webservice];
+        
+        return self;
+        
+    }
+    @catch (NSException *exception) {
+        NSLog(@"Exception is  %@",exception);
+    }
+    @finally {
+        
+    }
+}
+
+//-(void)viewWillDisappear:(BOOL)animated{
+//    [self viewWillDisappear:animated];
+//    [[NSNotificationCenter defaultCenter] removeObserver:self
+//                                                    name:nil
+//                                                  object:moviePlayerController];
+//}
+
+-(void)Webservice
+{
+    @try {
+        //NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+        NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+        NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+        
+        //NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/DAILY%20MOTOR%201.json"];
+        //http://bposerviceslabs.com/video_podcast/json/TheDailyMotor.php
+        
+        // NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/json/TheDailyMotor.php"];
+        NSURL * url = [NSURL URLWithString:@"http://bposerviceslabs.com/video_podcast/json/STREETLEGAL4K29MOBILE640.php"];
+        
+        NSURLSessionDataTask * dataTask = [defaultSession dataTaskWithURL:url
+                                                        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                                            if(error == nil)
+                                                            {
+                                                                NSError* error;
+                                                                NSDictionary* json = [NSJSONSerialization JSONObjectWithData:data
+                                                                                                                     options:kNilOptions
+                                                                                                                       error:&error];
+                                                                NSDictionary *dict_channel=[json objectForKey:@"channel"];
+                                                                arr_detail=[dict_channel objectForKey:@"item"];
+                                                                
+                                                                //                                                            [[NSUserDefaults standardUserDefaults] setObject:arr_detail forKey:@"k_det"];
+                                                                //                                                            [[NSUserDefaults standardUserDefaults] synchronize];
+                                                                arr_main = [[NSMutableArray alloc]init];
+                                                                for (int i=0; i<arr_detail.count; i++)
+                                                                {
+                                                                    
+                                                                    NSDictionary *dict_item=arr_detail[i];
+                                                                    NSString *str_title=[dict_item objectForKey:@"title"];
+                                                                    NSDictionary *dict_desc = [dict_item objectForKey:@"description"];
+                                                                    NSString *str_description ;
+                                                                    if (dict_desc == nil || [dict_desc allKeys].count <=0) {
+                                                                        str_description = @"";
+                                                                    }else {
+                                                                        str_description = [NSString stringWithFormat:@"%@",dict_desc];
+                                                                    }
+                                                                    
+                                                                    
+                                                                    NSString *str_pub_date=[dict_item objectForKey:@"pubDate"];
+                                                                    NSDictionary *dic_encl=[dict_item objectForKey:@"enclosure"];
+                                                                    NSDictionary *dic_attri=[dic_encl objectForKey:@"@attributes"];
+                                                                    
+                                                                    if (i == arr_detail.count - 1) {
+                                                                        NSString *str_dfurl=[dic_attri objectForKey:@"url"];
+                                                                        
+                                                                        [[NSUserDefaults standardUserDefaults] setObject:str_dfurl forKey:VAL_NEW_VIDEO];
+                                                                        [[NSUserDefaults standardUserDefaults]synchronize];
+                                                                    }
+                                                                    
+                                                                    NSString *str_video_url=[dic_attri objectForKey:@"url"];
+                                                                    NSString *str_video_type=[dic_attri objectForKey:@"type"];
+                                                                    
+                                                                    [arr_video_title addObject:str_title];
+                                                                    [arr_video_info addObject:str_pub_date];
+                                                                    [arr_URL addObject:str_video_url];
+                                                                    [arr_video_type addObject:str_video_type];
+                                                                    
+                                                                    //New
+                                                                    NSMutableDictionary *dictVideoInfo = [[NSMutableDictionary alloc]init];
+                                                                    [dictVideoInfo setObject:str_title forKey:TITLE];
+                                                                    [dictVideoInfo setObject:str_pub_date forKey:PUB_DATE];
+                                                                    [dictVideoInfo setObject:str_description forKey:DESCRIPTION];
+                                                                    [dictVideoInfo setObject:str_video_url forKey:VIDEO_URL];
+                                                                    [dictVideoInfo setObject:str_video_type forKey:VIDEO_TYPE];
+                                                                    
+                                                                    [arr_main addObject:dictVideoInfo];
+                                                                    //
+                                                                }
+                                                                cur_playVideo = 0;
+                                                                
+                                                                [[NSUserDefaults standardUserDefaults] setValue:[NSString stringWithFormat:@"0"]forKey:@"cur_play"];
+                                                                [[NSUserDefaults standardUserDefaults] synchronize];
+                                                                
+                                                                
+                                                                NSLog(@"...........%@",arr_URL);
+                                                                table_view.delegate=self;
+                                                                table_view.dataSource=self;
+                                                                
+                                                                [table_view reloadData];
+                                                                
+                                                                if (arr_URL!=nil && arr_URL.count>0)
+                                                                {
+                                                                    NSString *filepath = [NSString stringWithFormat:@"%@",arr_URL[0]];
+                                                                    str_url=filepath;
+                                                                    NSURL *fileURL = [NSURL URLWithString: filepath];
+                                                                    [[NSUserDefaults standardUserDefaults] setObject:arr_URL[0] forKey:@"k_URL"];
+                                                                    if (arr_URL.count>1) {
+                                                                        [[NSUserDefaults standardUserDefaults] setObject:arr_URL[1] forKey:@"k_URL2"];
+                                                                    }
+                                                                    [[NSUserDefaults standardUserDefaults] synchronize];
+                                                                    
+                                                                }
+                                                                
+                                                                //                                                            if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL"]==nil)
+                                                                //                                                            {
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+                                                                //
+                                                                //
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                //NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+                                                                //                                                                //NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                NSURLSessionConfiguration *DEF=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"DSDASD"];
+                                                                ////                                                                NSUrlSessionConfiguration configuration =
+                                                                ////                                                                NSUrlSessionConfiguration.CreateBackgroundSessionConfiguration ("com.SimpleBackgroundTransfer.BackgroundSession");
+                                                                //
+                                                                //
+                                                                //                                                                NSURL * url = [NSURL URLWithString:arr_URL[0]];
+                                                                //                                                                NSURLSessionDownloadTask *get_video =
+                                                                //                                                                [defaultSession downloadTaskWithURL:url];
+                                                                //
+                                                                //                                                                [get_video resume];
+                                                                //                                                                [spinner startAnimating];
+                                                                //                                                            }
+                                                                //                                                            else if([[[NSUserDefaults standardUserDefaults] objectForKey:@"k_URL"] isEqualToString:arr_URL[0]])
+                                                                //                                                            {
+                                                                //                                                                moviePlayerController.contentURL=[NSURL URLWithString: [[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL"] ];
+                                                                //                                                                [moviePlayerController play];
+                                                                //
+                                                                //                                                                if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL2"]==nil)
+                                                                //                                                                {
+                                                                //                                                                    //NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                    NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                    NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+                                                                //
+                                                                //                                                                    NSURL * url = [NSURL URLWithString:arr_URL[1]];
+                                                                //                                                                    NSURLSessionDownloadTask *get_video =
+                                                                //                                                                    [defaultSession downloadTaskWithURL:url];
+                                                                //
+                                                                //                                                                    [get_video resume];
+                                                                //
+                                                                //                                                                }
+                                                                //
+                                                                //                                                            }
+                                                                //                                                            else{
+                                                                //
+                                                                //                                                                //NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+                                                                //
+                                                                //
+                                                                //                                                                NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+                                                                //
+                                                                //
+                                                                //
+                                                                //                                                                NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+                                                                //                                                                NSURL * url = [NSURL URLWithString:arr_URL[0]];
+                                                                //                                                                NSURLSessionDownloadTask *get_video =
+                                                                //                                                                [defaultSession downloadTaskWithURL:url];
+                                                                //
+                                                                //                                                                [get_video resume];
+                                                                //
+                                                                //                                                            }
+                                                                
+                                                                
+                                                                NSDictionary *videos = [HCYoutubeParser h264videosWithYoutubeURL:[NSURL URLWithString:@"https://www.youtube.com/watch?v=kcIuVJiYauA"]];
+                                                                
+                                                                NSLog(@"------------%@",videos);
+                                                                
+                                                                
+                                                                //T0qAjgQFR4c
+                                                                moviePlayerController.contentURL=[NSURL URLWithString:[videos objectForKey:@"medium"]];
+                                                                [moviePlayerController play];
+                                                                
+                                                                cnt_book=-1;
+                                                                
+                                                                arr_bookmark=[[NSMutableArray alloc]init];
+                                                                //#UPDATE [arr_bookmark addObjectsFromArray:[self retrive_bookmark:str_url]];
+                                                                //[self draw_book];
+                                                                [view_load removeFromSuperview];
+                                                                
+                                                            }
+                                                            else
+                                                            {
+                                                                [view_load removeFromSuperview ];
+                                                                
+                                                                NSLog(@"ERROR OCCURE..............");
+                                                                UIAlertView *alr=[[UIAlertView alloc] initWithTitle:@"Error" message:@"Cannot load the Video! Try Again." delegate:self cancelButtonTitle:nil otherButtonTitles:@"OK", nil];
+                                                                [alr show];
+                                                            }
+                                                        }];
+        [dataTask resume];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"VideoPageControlle Exception %@",exception);
+    }
+    @finally {
+        
+    }
+    
+}
+
+-(NSMutableArray *)retrive_bookmark:(NSString *)str
+{
+    NSString *docsDir;
+    NSArray *dirPaths;
+    NSMutableArray *arr;
+    arr=[[NSMutableArray alloc]init];
+    
+    // Get the documents directory
+    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    
+    docsDir = [dirPaths objectAtIndex:0];
+    
+    // Build the path to the database file
+    databasePath = [[NSString alloc] initWithString: [docsDir stringByAppendingPathComponent: @"Bookmark.db"]];
+    NSFileManager *filemgr = [NSFileManager defaultManager];
+    const char *dbpath = [databasePath UTF8String];
+    NSLog(@"^^^^dbPath= %s",dbpath);
+    
+    
+    if ([filemgr fileExistsAtPath: databasePath ] == NO)
+    {
+        if (sqlite3_open(dbpath, &contactDB) == SQLITE_OK)  {
+            char *errMsg;
+            const char *sql_stmt="CREATE TABLE IF NOT EXISTS BOOKMARK (URL TEXT PRIMARY KEY,TIME TEXT)";
+            if (sqlite3_exec(contactDB, sql_stmt, NULL, NULL, &errMsg) != SQLITE_OK)
+            {
+                NSLog(@"^^^^Failed to create table");
+            }
+            sqlite3_close(contactDB);
+        }
+        else
+        {
+            NSLog(@"^^^^Failed to open/create database");
+        }
+    }
+    else{
+        
+        if (sqlite3_open(dbpath, &contactDB) == SQLITE_OK)
+        {
+            NSString* sqliteQuery = [NSString stringWithFormat:@"SELECT TIME FROM BOOKMARK WHERE URL = '%@'",str_url];
+            
+            if( sqlite3_prepare_v2(contactDB, [sqliteQuery UTF8String], -1, &statement, NULL) == SQLITE_OK )
+            {
+                
+                NSLog(@"^^^^  prepare ok");
+                if( sqlite3_step(statement) == SQLITE_ROW )
+                {
+                    //                    int length = sqlite3_column_bytes(statement, 0);
+                    //                    data       = [NSData dataWithBytes:sqlite3_column_blob(statement, 0) length:length];
+                    
+                    const unsigned char *col = sqlite3_column_text(statement,0);
+                    
+                    NSString *str_data=[NSString stringWithFormat:@"%s", col];
+                    // if ([str isEqualToString:@""""]) {
+                    
+                    
+                    //NSLog(@"####################################################  %@",str_data);
+                    // }
+                    // NSLog(@"//////////////////////////////   %@",str_data);
+                    if (![str_data isEqualToString:@""]) {
+                        arr=[NSMutableArray arrayWithArray:[str_data componentsSeparatedByString:@","]];
+                    }
+                }
+                else{
+                    
+                    NSLog(@"^^^^^^^^^^^^^^  prepare ok");
+                }
+                //                NSMutableArray* myMutableArray=[[NSMutableArray alloc]init];
+                //                myMutableArray= [NSKeyedUnarchiver unarchiveObjectWithData:data];
+                //                NSLog(@"^^^^^^^^^^^^^^ %@",myMutableArray);
+                
+                //arr=[NSKeyedUnarchiver unarchiveObjectWithData:data];
+            }
+            else{
+                NSLog(@"^^^^^^^^^^^^^^  prepare fail");
+            }
+            
+            sqlite3_finalize(statement);
+            sqlite3_close(contactDB);
+        }
+        
+        
+        
+    }
+    
+    //arr=[NSKeyedUnarchiver unarchiveObjectWithData:data];
+    NSLog(@"+++++++++++++++++%@",arr);
+    return arr;
+}
+
+-(void)add_bookmark
+{
+    NSString *docsDir;
+    NSArray *dirPaths;
+    NSMutableArray *arr;
+    arr=[[NSMutableArray alloc]init];
+    
+    // Get the documents directory
+    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    docsDir = [dirPaths objectAtIndex:0];
+    
+    // Build the path to the database file
+    databasePath = [[NSString alloc] initWithString: [docsDir stringByAppendingPathComponent: @"Bookmark.db"]];
+    
+    //NSFileManager *filemgr = [NSFileManager defaultManager];
+    const char *dbpath = [databasePath UTF8String];
+    NSLog(@"^^^^dbPath= %s",dbpath);
+    NSLog(@"add book mark call........");
+    
+    if (sqlite3_open(dbpath, &contactDB) == SQLITE_OK)
+    {
+        NSData* data = nil;
+        const char* sql_stmt = "INSERT OR REPLACE INTO BOOKMARK(URL,TIME) VALUES (?, ?)";
+        if( sqlite3_prepare_v2(contactDB, sql_stmt, -1, &statement, NULL) == SQLITE_OK )
+        {
+            
+            NSLog(@"^^^^^^^^^^^^^^  prepare ok");
+            data = [NSKeyedArchiver archivedDataWithRootObject:arr_bookmark];
+            NSString * myString = [arr_bookmark componentsJoinedByString:@", "];
+            sqlite3_bind_text(statement, 1, [str_url UTF8String], -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(statement, 2, [myString UTF8String], -1, SQLITE_TRANSIENT);
+            //sqlite3_bind_blob(statement, 2, [data bytes], [data length], SQLITE_TRANSIENT);
+            
+            NSLog(@"__________________________%d    )))))))))) %@",sqlite3_step(statement),myString);
+            if (sqlite3_step(statement) == SQLITE_DONE)
+            {
+                NSLog(@"^^^^^^^^^^^^^^^Done");
+            } else {
+                NSLog(@"^^^^^^^^^^^^^^error %d",sqlite3_step(statement));
+            }
+            sqlite3_finalize(statement);
+            sqlite3_close(contactDB);
+        }
+        else{
+            NSLog(@"^^^^^^^^^^^^^^  prepare fail");
+        }
+        // Finalize and close database.
+    }
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    
+    table_view.scrollEnabled=true;
+    ScrollView.scrollEnabled=false;
+    
+    drag_check=false;
+    self.View_video=[[UIView alloc]initWithFrame:CGRectMake(0, 50, screenWidth, screenHeight/2.4)];
+    
+    //self.View_video.frame=CGRectMake(0, 200, 100, 100);
+    self.View_video.backgroundColor=[UIColor clearColor];
+    [ScrollView addSubview:self.View_video];
+    
+    view_line=[[UIView alloc]initWithFrame:CGRectMake(0, self.view.bounds.size.height-(self.View_video.frame.size.height+11), self.View_video.frame.size.width, 1)];
+    view_line.backgroundColor=APP_COLOR;
+    [ScrollView addSubview:view_line];
+    
+    table_view=[[UITableView alloc]initWithFrame:CGRectMake(0, self.view.bounds.size.height-(self.View_video.frame.size.height+10), screenWidth, self.view.bounds.size.height-CGRectGetMaxY(self.View_video.frame)-screenWidth/5.3)];
+    [ScrollView addSubview:table_view];
+    [table_view setSeparatorStyle:UITableViewCellSeparatorStyleSingleLine];
+    
+    [table_view setSeparatorColor:APP_COLOR];
+    if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    {
+        scroll_height=self.view.frame.size.width;
+    }
+    else{
+        
+        scroll_height=self.view.frame.size.height;
+    }
+    
+    
+    [[self navigationController] setNavigationBarHidden:YES animated:YES];
+    
+    ScrollView.contentSize = CGSizeMake(self.view.frame.size.width, scroll_height);   //scroll view size
+    
+    
+    //ScrollView.backgroundColor=[UIColor grayColor];
+    ScrollView.showsVerticalScrollIndicator = NO;    // to hide scroll indicators!
+    
+    ScrollView.showsHorizontalScrollIndicator = YES; //by default, it shows!
+    
+    //ScrollView.scrollEnabled = YES;                 //say "NO" to disable scroll
+    ScrollView.delegate=self;
+    
+    [self.view addSubview:ScrollView];               //adding to parent view!
+    cnst_table_height.constant=scroll_height-self.View_video.frame.size.height-70;
+    
+    
+    //    NSString *filepath = [[NSBundle mainBundle] pathForResource:@"2" ofType:@"mp4"];
+    //    NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    //http://d1xhv4kq9nooda.cloudfront.net/T2/T2_D9D15_THEDE_ISSUE_018_640.m4v
+    //    NSString *filePath1= @"https://www.youtube.com/watch?v=K5CsJBvfebw";
+    //   NSURL *fileURL = [NSURL URLWithString: filePath1];
+    
+    //NSString *filepath = [NSString stringWithFormat:@"%@",arr_URL[0]];
+    //NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+    //moviePlayerController = [[MPMoviePlayerController alloc] initWithContentURL:fileURL];
+    moviePlayerController=[[MPMoviePlayerController alloc]init];
+    [moviePlayerController prepareToPlay];
+    //mpvc.moviePlayer.movieSourceType = MPMovieSourceTypeStreaming;
+    moviePlayerController.movieSourceType=MPMovieSourceTypeStreaming;
+    [moviePlayerController setScalingMode:MPMovieScalingModeFill];
+    [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.View_video.frame.size.height/1.5)];
+    if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    {
+        NSLog(@"Landscape detect.....................");
+        
+        ScrollView.contentOffset = CGPointMake(0,50);
+        ScrollView.scrollEnabled=NO;
+        
+        [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height)];
+        
+        table_view.hidden=YES;
+        view_line.hidden=YES;
+    }
+    moviePlayerController.movieSourceType = MPMovieSourceTypeStreaming;
+    [self.View_video addSubview:moviePlayerController.view];
+    //moviePlayerController.fullscreen = YES;
+    [moviePlayerController play];
+    moviePlayerController.shouldAutoplay = YES;
+    moviePlayerController.controlStyle = MPMovieControlStyleNone;
+    
+    [self setComponent];
+    [self set_view_Control];
+    
+    //    UITapGestureRecognizer * tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
+    //    [view_player_layer addGestureRecognizer:tap];
+    
+    //    UISwipeGestureRecognizer *recognizer1,*recognizer2,*recognizer3;
+    //
+    //    recognizer1 = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeRight:)];
+    //    [recognizer1 setDirection:(UISwipeGestureRecognizerDirectionRight )];
+    //    recognizer2 = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeLeft:)];
+    //    [recognizer2 setDirection:(UISwipeGestureRecognizerDirectionLeft )];
+    //    recognizer3 = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipeDown:)];
+    //    [recognizer3 setDirection:(UISwipeGestureRecognizerDirectionDown )];
+    //
+    //
+    //    [view_player_layer addGestureRecognizer:recognizer1];
+    //    [view_player_layer addGestureRecognizer:recognizer2];
+    //    [view_player_layer addGestureRecognizer:recognizer3];
+    
+    //#UPDATE
+    lblBookmark.hidden=YES;
+    
+    img_btn=[self imagedraw:NO];
+    UIImage *imgBack = [UIImage imageNamed:@"last_icon"];
+    [btn_lastpage setImage:imgBack forState:UIControlStateNormal];
+    [btn_lastpage setBackgroundColor:[UIColor whiteColor]];
+    
+    [btn_lastpage addTarget:self action:@selector(BTLastPageTap:) forControlEvents:UIControlEventTouchUpInside];
+    
+    img_btn=[self imagedraw:YES];
+    [btn_homepage setImage:img_btn forState:UIControlStateNormal];
+    [btn_homepage addTarget:self action:@selector(BTHomePageTap:) forControlEvents:UIControlEventTouchUpInside];
+}
+
+-(void)handleSwipeRight:(UISwipeGestureRecognizer *)recognizer
+{
+    NSLog(@" *** SWIPE RIGHT ***");
+    //moviePlayerController.currentPlaybackTime=moviePlayerController.currentPlaybackTime-10;
+    
+    int cnt;
+    float book_time;
+    float book_time_jump=moviePlayerController.duration;
+    float curr_time=moviePlayerController.currentPlaybackTime;
+    //NSMutableArray *arr_bookmark_max=[[NSMutableArray alloc]init];
+    //moviePlayerController.currentPlaybackTime=moviePlayerController.currentPlaybackTime+10;
+    cnt=0;
+    
+    for (int i=0; i<arr_bookmark.count; i++)
+    {
+        if ([arr_bookmark[i] floatValue]>curr_time) {
+            cnt=1;
+            //            [arr_bookmark addObject:arr_bookmark[i]];
+            
+            book_time=[arr_bookmark[i] floatValue];
+            if (book_time<=book_time_jump) {
+                
+                book_time_jump=book_time;
+            }
+        }
+    }
+    if (cnt==1) {
+        
+        moviePlayerController.currentPlaybackTime=book_time_jump;
+        
+    }
+    else{
+        // moviePlayerController.currentPlaybackRate=time_curr+10;
+    }
+}
+
+-(void)handleSwipeLeft:(UISwipeGestureRecognizer *)recognizer
+{
+    NSLog(@" ***!!!!!!! SWIPE LEFT ***");
+    int cnt;
+    float book_time;
+    float book_time_jump=0;
+    float curr_time=moviePlayerController.currentPlaybackTime-1;
+    //NSMutableArray *arr_bookmark_max=[[NSMutableArray alloc]init];
+    
+    cnt=0;
+    
+    for (int i=0; i<arr_bookmark.count; i++)
+    {
+        if ([arr_bookmark[i] floatValue]<curr_time) {
+            
+            cnt=1;
+            //            [arr_bookmark addObject:arr_bookmark[i]];
+            
+            book_time=[arr_bookmark[i] floatValue];
+            if (book_time>=book_time_jump) {
+                
+                book_time_jump=book_time;
+            }
+        }
+    }
+    if (cnt==1) {
+        moviePlayerController.currentPlaybackTime=book_time_jump;
+    }
+    else{
+    }
+}
+
+-(void)handleSwipeDown:(UISwipeGestureRecognizer *)recognizer {
+    {
+        //#UPDATE    if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+        //    {
+        //
+        //        float bookmark=moviePlayerController.currentPlaybackTime;
+        //
+        //
+        //        if (isnan(bookmark)) {
+        //
+        //        }
+        //        else{
+        //
+        //            BOOL match=false;
+        //
+        //            for (int i=0; i<arr_bookmark.count; i++) {
+        //
+        //                if ([arr_bookmark[i] floatValue]==bookmark) {
+        //
+        //                    match=YES;
+        //
+        //                }
+        //            }
+        //
+        //            if (!match) {
+        //
+        //                [arr_bookmark addObject:[NSString stringWithFormat:@"%f",bookmark]];
+        //
+        //                NSLog(@"add book mark ..............................");
+        //                UILabel *lbl_book_added=[[UILabel alloc]initWithFrame:CGRectMake(view_player_layer.center.x, view_player_layer.center.y, 0, 0)];
+        //
+        //                [UIView animateWithDuration:0.5 delay:0
+        //                     usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+        //                                    options:0 animations:^{
+        //
+        //                                        lbl_book_added.frame=CGRectMake(0, 0, 150, 40);
+        //                                        lbl_book_added.backgroundColor=[[UIColor redColor] colorWithAlphaComponent:0.8];
+        //
+        //                                        lbl_book_added.layer.masksToBounds = YES;
+        //                                        lbl_book_added.layer.cornerRadius=5;
+        //                                        lbl_book_added.layer.borderWidth=5;
+        //                                        lbl_book_added.layer.borderColor=[UIColor whiteColor].CGColor;
+        //                                        lbl_book_added.textAlignment=NSTextAlignmentCenter;
+        //                                        lbl_book_added.textColor=[UIColor whiteColor];
+        //                                        [lbl_book_added setText:@"BookMark added"];
+        //                                        lbl_book_added.center=view_player_layer.center;
+        //                                        [view_player_layer addSubview:lbl_book_added];
+        //
+        //
+        //
+        //                                    }  completion:^(BOOL finished){
+        //                                        [UIView animateWithDuration:.20 delay:0.0
+        //                                                            options:UIViewAnimationOptionAllowUserInteraction
+        //                                                         animations:^{
+        //
+        //                                                             lbl_book_added.frame=CGRectMake(view_player_layer.center.x, view_player_layer.center.y, 0, 0);
+        //
+        //
+        //                                                         }
+        //                                                         completion:^(BOOL finished){
+        //                                                         }];
+        //                                    }];
+        //            }
+        //
+        //
+        //
+        //
+        //        }
+        //
+        //        [self draw_book];
+        //    }
+    }
+}
+
+- (void)handleTap:(UITapGestureRecognizer *)gesture
+{
+    int a=10;
+    int b=20;
+    
+    int flag = ((a%2==0)?1:0);
+    //    if (moviePlayerController.playbackState==MPMoviePlaybackStateInterrupted) {
+    //
+    //        NSLog(@"@@@@@@@@@@@@@@@@@ MPMoviePlaybackStateInterrupted");
+    //    }
+    //    if (moviePlayerController.playbackState==MPMoviePlaybackStatePaused) {
+    //
+    //        NSLog(@"@@@@@@@@@@@@@@@@@ MPMoviePlaybackStatePaused");
+    //    }
+    //    if (moviePlayerController.playbackState==MPMoviePlaybackStatePlaying) {
+    //
+    //        NSLog(@"@@@@@@@@@@@@@@@@@ MPMoviePlaybackStatePlaying");
+    //    }
+    //    if (moviePlayerController.playbackState==MPMoviePlaybackStateStopped) {
+    //
+    //        if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    //        {
+    //            [UIView animateWithDuration:0.3 delay:0
+    //                 usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+    //                                options:0 animations:^{
+    //                                    [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height-50)];
+    //                                    view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+    //
+    //
+    //
+    //                                    view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+    //                                    view_player_layer.frame=moviePlayerController.view.bounds;
+    //
+    //                           lblPlay.frame=CGRectMake(screenWidth/2.5, moviePlayerController.view.bounds.size.height+10, 100, 40);
+    //                                    lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, moviePlayerController.view.bounds.size.height+10, 100, 40);
+    //                                    lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+    //                                    //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+    //                                    lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+    //
+    //
+    //                                    view_drag.frame=CGRectMake(0, self.view.frame.size.height,moviePlayerController.view.frame.size.width, 50);
+    //
+    //                                    //view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height+73, self.view.frame.size.width, 100);
+    //
+    //
+    //                                    NSLog(@"...............%f",moviePlayerController.view.frame.size.height+73);
+    //                                    spinner.center=moviePlayerController.view.center;
+    //
+    //                                    //view_drag.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width, 10);
+    //
+    //
+    //
+    //
+    //                                } completion:nil];
+    //        }
+    //
+    //    }
+    //
+    //
+    //
+    //
+    //    if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying)
+    //    {
+    //        [moviePlayerController pause];
+    //
+    //        if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    //        {
+    //              [UIView animateWithDuration:0.3 delay:0
+    //                 usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+    //                                options:0 animations:^{
+    //                                    [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height-self.view.frame.size.height/4)];
+    //                                    view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+    //
+    //
+    //
+    //                                    view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+    //                                    view_player_layer.frame=moviePlayerController.view.bounds;
+    //
+    //                                    lblPlay.frame=CGRectMake(screenWidth/3.5, moviePlayerController.view.bounds.size.height, 100, 40);
+    //                                    lblBookmark.frame=CGRectMake(self.view.frame.size.width/2, moviePlayerController.view.bounds.size.height, 100, 40);
+    //                                    lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height-10, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+    //                                    //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+    //                                    lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+    //
+    //                                    view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.width/3);
+    //
+    //                                    //view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height+73, self.view.frame.size.width, 100);
+    //
+    //
+    //                                    NSLog(@"...............%f",moviePlayerController.view.frame.size.height+73);
+    //
+    //
+    //                                     //view_drag.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width, 10);
+    //                                    //btn_remove_bookmark_land.frame=CGRectMake(self.view.frame.size.width-100, 5, 85, 30);
+    //
+    //                                    if (![btn_remove_bookmark_land isDescendantOfView:view_drag]) {
+    //                                    btn_remove_bookmark_land=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-100, 5, 85, 18)];
+    //
+    //                                    [view_drag addSubview:btn_remove_bookmark_land];
+    //
+    //                                        NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~not added");
+    //                                    }
+    //                                    else{
+    //
+    //                                        NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~added");
+    //                                    }
+    //
+    //
+    //                                    [btn_remove_bookmark_land setTitle:@"Remove Bookmark" forState:UIControlStateNormal];
+    //                                    btn_remove_bookmark_land.titleLabel.font=[UIFont systemFontOfSize:8];
+    //                                    [btn_remove_bookmark_land setTitleColor:APP_COLOR forState:UIControlStateNormal];
+    //                                    btn_remove_bookmark_land.layer.cornerRadius=10;
+    //                                    btn_remove_bookmark_land.layer.borderWidth=1;
+    //                                    btn_remove_bookmark_land.layer.borderColor=APP_COLOR.CGColor;
+    //                                    [btn_remove_bookmark_land addTarget:self action:@selector(act_remove_bookmark:) forControlEvents:UIControlEventTouchUpInside];
+    //
+    //
+    //                                } completion:nil];
+    //        }
+    //        spinner.center=moviePlayerController.view.center;
+    //
+    //        NSLog(@"..............pause");
+    //    }
+    //    else
+    //    {
+    //        if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    //        {
+    //
+    //             [UIView animateWithDuration:0.3 delay:0
+    //                 usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+    //                                options:0 animations:^{
+    //                                    [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height)];
+    //                                    view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+    //
+    //
+    //
+    //                                    view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+    //                                    view_player_layer.frame=moviePlayerController.view.bounds;
+    //
+    //                           lblPlay.frame=CGRectMake(screenWidth/2.5, moviePlayerController.view.bounds.size.height+10, 100, 40);
+    lbl_title.frame=CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height+10, 100, 40);
+    //                                    lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, moviePlayerController.view.bounds.size.height+10, 100, 40);
+    //                                    lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+    //                                    //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+    //                                    lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+    //
+    //                                    view_drag.frame=CGRectMake(0, self.view.frame.size.height,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height/3);
+    //
+    //
+    //
+    //                                } completion:nil];
+    //
+    //
+    //        }
+    //        NSLog(@"..............play");
+    //        spinner.stopAnimating;
+    //        [moviePlayerController play];
+    //    }
+    
+    //    NSLog(@"========================");
+}
+
+-(void)set_view_Control
+{
+    view_control_back=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2)];
+    view_control_back.backgroundColor=[APP_COLOR  colorWithAlphaComponent:0.8];
+    [self.View_video addSubview:view_control_back];
+    
+    view_control=[[UIView alloc]initWithFrame:CGRectMake(0, 0,moviePlayerController.view.frame.size.width, 2)];
+    view_control.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.6];
+    [view_control_back addSubview:view_control];
+    
+    view_buff=[[UIView alloc]initWithFrame:CGRectMake(0,0,0,0)];
+    view_buff.backgroundColor=[UIColor lightGrayColor];
+    [view_control addSubview:view_buff];
+    
+    view_playhead=[[UIView alloc]initWithFrame:CGRectMake(-30,30,35,45)];
+    view_playhead.backgroundColor=APP_COLOR;
+    [view_control addSubview:view_playhead];
+    
+    //    view_book=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+5,moviePlayerController.view.frame.size.width, 5)];
+    //    view_book.backgroundColor=[UIColor greenColor];
+    //    [self.View_video addSubview:view_book];
+    
+    view_book=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, 0,moviePlayerController.view.frame.size.width, 5)];
+    view_book.backgroundColor=[UIColor clearColor];
+    [view_control_back addSubview:view_book];
+    
+    //view_drag=[[UIView alloc]initWithFrame:CGRectMake(0, self.View_video.frame.origin.y+moviePlayerController.view.frame.size.height, self.view.frame.size.width, 10)];
+    view_drag=[[UIView alloc]initWithFrame:CGRectMake(0, moviePlayerController.view.frame.size.height, self.view.frame.size.width, 50)];
+    view_drag.backgroundColor=[[UIColor greenColor] colorWithAlphaComponent:0.0];
+    
+    drag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragging:)];
+    [view_drag addGestureRecognizer:drag];
+    [self.view addSubview:view_drag];
+    
+    view_seek=[[UIView alloc]initWithFrame:CGRectMake(-10,0,5, 7)];
+    view_seek.backgroundColor=[UIColor greenColor];
+    [view_control_back addSubview:view_seek];
+    
+    view_seek_bar=[[UIView alloc]initWithFrame:CGRectMake(0,0,0, 0)];
+    view_seek_bar.backgroundColor=APP_COLOR;
+    [view_control_back addSubview:view_seek_bar];
+    
+    
+    if (UIDeviceOrientationIsPortrait([UIDevice currentDevice].orientation))
+    {
+        view_drag.hidden=YES;
+        view_drag_portait=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width,CGRectGetMaxY(self.View_video.frame)- CGRectGetMaxY(moviePlayerController.view.frame))];
+        view_drag_portait.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.0];
+        drag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragging:)];
+        [view_drag_portait addGestureRecognizer:drag];
+        [self.View_video addSubview:view_drag_portait];
+        
+        btn_remove_bookmark=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-100, 5, 85, 18)];
+        [btn_remove_bookmark setTitle:@"Remove Bookmark" forState:UIControlStateNormal];
+        btn_remove_bookmark.titleLabel.font=[UIFont systemFontOfSize:8];
+        [btn_remove_bookmark setTitleColor:APP_COLOR forState:UIControlStateNormal];
+        btn_remove_bookmark.layer.cornerRadius=10;
+        btn_remove_bookmark.layer.borderWidth=1;
+        btn_remove_bookmark.layer.borderColor=APP_COLOR.CGColor;
+        [btn_remove_bookmark addTarget:self action:@selector(act_remove_bookmark:) forControlEvents:UIControlEventTouchUpInside];
+        
+        //#UPDATE
+        //[view_drag_portait addSubview:btn_remove_bookmark];
+    }
+}
+
+-(void)setComponent
+{
+    //    //btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-60, -5, 50, 50)];
+    //    btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-50, -5, 30, 30)];
+    //
+    //    [btnAddPodcast addTarget:self
+    //                      action:@selector(act_addPodcast:)
+    //            forControlEvents:UIControlEventTouchDown];
+    //
+    //    img_btn=[self imagedraw];
+    //
+    //
+    //
+    //
+    //
+    //    [btnSetting setImage:img_btn forState:UIControlStateNormal];
+    //    [btnSetting addTarget:self
+    //                   action:@selector(act_setting:)
+    //         forControlEvents:UIControlEventTouchDown];
+    //
+    //    [btnAddPodcast setImage:img_btn forState:UIControlStateNormal];
+    //    [btnAddPodcast setTintColor:APP_COLOR];
+    //
+    //    [ScrollView addSubview:btnAddPodcast];
+    //
+    //    lblAddPodcast=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth-120, -10, 100, 40)];
+    //    lblAddPodcast.text=@"ADD PODCAST";
+    //    [lblAddPodcast setFont:[UIFont systemFontOfSize:8]];
+    //    lblAddPodcast.textColor=APP_COLOR;
+    //    [ScrollView addSubview:lblAddPodcast];
+    //
+    //
+    //   // lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-30, 200, 40)];
+    //    lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-50, 200, 40)];
+    //    lblPlayHead.text=@"PLAYHEAD";
+    //    [lblPlayHead setFont:[UIFont systemFontOfSize:8]];
+    //    lblPlayHead.textColor=APP_COLOR;
+    //    [self.View_video addSubview:lblPlayHead];
+    //
+    //
+    //    //lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-45, 200, 40)];
+    //    lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-60, 200, 40)];
+    //
+    //    lblBuffer.text=@"BUFFERING";
+    //    [lblBuffer setFont:[UIFont systemFontOfSize:8]];
+    //    lblBuffer.textColor=APP_COLOR;
+    //    [self.View_video addSubview:lblBuffer];
+    //
+    //
+    //
+    //    lblPlay=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/3.5, self.View_video.bounds.size.height-50, 200, 40)];
+    //    lblPlay.text=@"PLAY";
+    //    [lblPlay setFont:[UIFont systemFontOfSize:8]];
+    //    lblPlay.textColor=APP_COLOR;
+    //    [self.View_video addSubview:lblPlay];
+    //
+    //
+    //    lblBookmark=[[UILabel alloc]initWithFrame:CGRectMake(self.view.frame.size.width/2, self.View_video.bounds.size.height-50, 100, 40)];
+    //    lblBookmark.text=@"Bookmark";
+    //    [lblBookmark setFont:[UIFont systemFontOfSize:8]];
+    //    lblBookmark.textColor=APP_COLOR;
+    //
+    //    [self.View_video addSubview:lblBookmark];
+    //
+    //    spinner= [[UIActivityIndicatorView alloc] initWithFrame: CGRectMake(0, 0, 30, 30)];
+    //    spinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
+    //    [moviePlayerController.view addSubview: spinner];
+    //    [spinner startAnimating];
+    //    spinner.center=moviePlayerController.view.center;
+    //
+    //
+    //
+    //    view_load=[[UIView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
+    //    view_load.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.5];
+    //    UIActivityIndicatorView * ai = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    //    ai.center=view_load.center;
+    //    [ai startAnimating];
+    //    [view_load addSubview:ai];
+    //    [self.view bringSubviewToFront:view_load];
+    //    [self.view addSubview:view_load];
+    
+    
+    
+    //btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-60, -5, 50, 50)];
+    btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-50, 8, 30, 30)];
+    
+    [btnAddPodcast addTarget:self
+                      action:@selector(act_addPodcast:)
+            forControlEvents:UIControlEventTouchDown];
+    img_btn=[self imagedraw:NO];
+    [btnSetting setImage:img_btn forState:UIControlStateNormal];
+    [btnSetting addTarget:self
+                   action:@selector(act_setting:)
+         forControlEvents:UIControlEventTouchDown];
+    [btnAddPodcast setImage:img_btn forState:UIControlStateNormal];
+    [btnAddPodcast setTintColor:APP_COLOR];
+    
+    //[ScrollView addSubview:btnAddPodcast];
+    
+    
+    btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-50, 10, 30, 30)];
+    [btnAddPodcast setImage:img_btn forState:UIControlStateNormal];
+    
+    [btnAddPodcast addTarget:self
+                      action:@selector(act_addPodcast:)
+            forControlEvents:UIControlEventTouchDown];
+    //btnPodcast.backgroundColor=[UIColor redColor];
+    [ScrollView addSubview:btnAddPodcast];
+    
+    lblAddPodcast=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth-120, 3, 100, 40)];
+    lblAddPodcast.text=@"ADD PODCAST";
+    [lblAddPodcast setFont:[UIFont systemFontOfSize:8]];
+    lblAddPodcast.textColor=APP_COLOR;
+    
+    /* Vivek Change */
+    [btnSetting setTitle:@" " forState:UIControlStateNormal];
+    [btnAddPodcast setHidden:YES];
+    [lblAddPodcast setHidden:YES];
+    /* Vivek Change */
+    
+    [ScrollView addSubview:lblAddPodcast];
+    
+    // lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-30, 200, 40)];
+    lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, moviePlayerController.view.bounds.size.height, 200, 40)];
+    lblPlayHead.text=@"PLAYHEAD";
+    [lblPlayHead setFont:[UIFont systemFontOfSize:8]];
+    lblPlayHead.textColor=APP_COLOR;
+    [self.View_video addSubview:lblPlayHead];
+    
+    //lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-45, 200, 40)];
+    lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, moviePlayerController.view.bounds.size.height-10, 200, 40)];
+    lblBuffer.text=@"BUFFERING";
+    [lblBuffer setFont:[UIFont systemFontOfSize:8]];
+    lblBuffer.textColor=[UIColor grayColor];
+    [self.View_video addSubview:lblBuffer];
+    
+    //    lblPlay=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/3.5, moviePlayerController.view.bounds.size.height, 200, 40)];
+    lblPlay=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/3.1, moviePlayerController.view.bounds.size.height, 200, 40)];
+    lblPlay.text=@"PLAY";
+    [lblPlay setFont:[UIFont systemFontOfSize:8]];
+    lblPlay.textColor=APP_COLOR;
+    [self.View_video addSubview:lblPlay];
+    
+    lbl_title=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height, 200, 40)];
+    lbl_title.text=@"HOME PLAYLIST";
+    [lbl_title setFont:[UIFont systemFontOfSize:8]];
+    lbl_title.textColor=APP_COLOR;
+    [self.View_video addSubview:lbl_title];
+    
+    btn_download=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth/2.1, screenWidth/1.05, 20, 20)];
+    //[btn_download setTitle:@"Download" forState:UIControlStateNormal];
+    [btn_download.titleLabel setFont:[UIFont systemFontOfSize:8]];
+    [btn_download setBackgroundColor:[UIColor clearColor]];
+    [btn_download.layer setCornerRadius:10];
+    [btn_download.layer setBorderWidth:2.0];
+    [btn_download.layer setBorderColor:APP_COLOR.CGColor];
+    [btn_download addTarget:self action:@selector(downloadVideo:) forControlEvents:UIControlEventTouchDown];
+    [self.view addSubview:btn_download];
+    
+    btn_savelist=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth/1.45, screenWidth/1.05, 20, 20)];
+    //[btn_download setTitle:@"Download" forState:UIControlStateNormal];
+    [btn_savelist.titleLabel setFont:[UIFont systemFontOfSize:8]];
+    [btn_savelist setBackgroundColor:[UIColor clearColor]];
+    [btn_savelist.layer setCornerRadius:10];
+    [btn_savelist.layer setBorderWidth:2.0];
+    [btn_savelist.layer setBorderColor:APP_COLOR.CGColor];
+    [btn_savelist addTarget:self action:@selector(saveVideo:) forControlEvents:UIControlEventTouchDown];
+    
+    [self.view addSubview:btn_savelist];
+    
+    btn_time=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth/1.1,screenWidth/1.05, 20, 20)];
+    //[btn_download setTitle:@"Download" forState:UIControlStateNormal];
+    [btn_time.titleLabel setFont:[UIFont systemFontOfSize:8]];
+    [btn_time setBackgroundColor:[UIColor clearColor]];
+    [btn_time.layer setCornerRadius:10];
+    [btn_time.layer setBorderWidth:2.0];
+    [btn_time.layer setBorderColor:APP_COLOR.CGColor];
+    [btn_time addTarget:self action:@selector(linkVideo:) forControlEvents:UIControlEventTouchDown];
+    
+    [self.view addSubview:btn_time];
+    
+    lbl_download=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/2.25, btn_download.frame.origin.y + 15, 50, 30)];
+    lbl_download.text=@"DOWNLOAD";
+    [lbl_download setFont:[UIFont systemFontOfSize:8]];
+    lbl_download.textColor=APP_COLOR;
+    [self.view addSubview:lbl_download];
+    
+    lbl_savelist=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/1.55, btn_download.frame.origin.y + 15, 80, 30)];
+    lbl_savelist.text=@"SAVE TO MYLIST";
+    [lbl_savelist setFont:[UIFont systemFontOfSize:8]];
+    lbl_savelist.textColor=APP_COLOR;
+    [self.view addSubview:lbl_savelist];
+    
+    lbl_time=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/1.10, btn_download.frame.origin.y + 15, 80, 30)];
+    lbl_time.text=@"LINK";
+    [lbl_time setFont:[UIFont systemFontOfSize:8]];
+    lbl_time.textColor=APP_COLOR;
+    [self.view addSubview:lbl_time];
+    
+    
+    lblBookmark=[[UILabel alloc]initWithFrame:CGRectMake(self.view.frame.size.width/2, moviePlayerController.view.bounds.size.height, 100, 40)];
+    lblBookmark.text=@"Bookmark";
+    [lblBookmark setFont:[UIFont systemFontOfSize:8]];
+    lblBookmark.textColor=APP_COLOR;
+    [self.View_video addSubview:lblBookmark];
+    
+    
+    view_push =[[UIView alloc]initWithFrame:CGRectMake(self.View_video.frame.size.width/2, moviePlayerController.view.bounds.size.height / 0.73, self.View_video.frame.size.width/2, 30)];
+    [view_push setBackgroundColor:[UIColor clearColor]];
+    [view_push setHidden:NO];
+    [view_push setHidden:NO];
+    [btn_download setHidden:NO];
+    [btn_savelist setHidden:NO];
+    [btn_time setHidden:NO];
+    [lbl_download setHidden:NO];
+    [lbl_savelist setHidden:NO];
+    [lbl_time setHidden:NO];
+    [lbl_title setHidden:NO];
+    
+    // [self.View_video addSubview:view_push];
+    
+    
+    spinner= [[UIActivityIndicatorView alloc] initWithFrame: CGRectMake(0, 0, 40, 40)];
+    spinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
+    spinner.color =APP_COLOR;
+    [moviePlayerController.view addSubview: spinner];
+    //[spinner startAnimating];
+    spinner.center=moviePlayerController.view.center;
+    
+    view_load=[[UIView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
+    view_load.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.5];
+    UIActivityIndicatorView * ai = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    ai.center=view_load.center;
+    [ai startAnimating];
+    ai.color =APP_COLOR;
+    ai.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
+    [view_load addSubview:ai];
+    [self.view bringSubviewToFront:view_load];
+    [self.view addSubview:view_load];
+    
+    if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+    {
+        NSLog(@"Landscape detect.....................");
+        
+        //        lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, lblBuffer.frame.origin.y+50, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+        //        lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, lblPlayHead.frame.origin.y+50, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+        //        lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y+50, lblPlay.frame.size.width, lblPlay.frame.size.height);
+        //        lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y+50, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+        //
+        //                lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, lblBuffer.frame.origin.y+150, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+        //                lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, lblPlayHead.frame.origin.y+150, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+        //                lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y+150, lblPlay.frame.size.width, lblPlay.frame.size.height);
+        //                lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y+150, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+        //
+        //                view_seek.hidden=YES;
+        
+        
+        lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, lblBuffer.frame.origin.y+300, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+        lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, lblPlayHead.frame.origin.y+300, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+        lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y+300, lblPlay.frame.size.width, lblPlay.frame.size.height);
+        lbl_title.frame=CGRectMake(lbl_title.frame.origin.x, lbl_title.frame.origin.y+300, lbl_title.frame.size.width, lbl_title.frame.size.height);
+        lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y+300, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+        
+        // view_push =[[UIView alloc]initWithFrame:CGRectMake(self.View_video.frame.size.width/2, moviePlayerController.view.bounds.size.height / 0.73, self.View_video.frame.size.width/2, 30)];
+        
+        
+        view_push.frame = CGRectMake(self.View_video.frame.size.width/2, moviePlayerController.view.bounds.size.height / 0.68, self.View_video.frame.size.width/2, 30);
+        view_seek.hidden=YES;
+        [view_push setHidden:YES];
+        
+        [btn_download setHidden:YES];
+        [btn_savelist setHidden:YES];
+        [btn_time setHidden:YES];
+        [lbl_download setHidden:YES];
+        [lbl_savelist setHidden:YES];
+        [lbl_time setHidden:YES];
+        [lbl_title setHidden:YES];
+        view_player_layer=[[UIView alloc]initWithFrame:self.view.bounds];
+        view_player_layer.backgroundColor=[[UIColor greenColor] colorWithAlphaComponent:0.0];
+        [self.view addSubview:view_player_layer];
+    }
+    else
+    {
+        view_player_layer=[[UIView alloc]initWithFrame:CGRectMake(self.View_video.frame.origin.x, self.View_video.frame.origin.y+20,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height)];
+        view_player_layer.backgroundColor=[[UIColor greenColor] colorWithAlphaComponent:0.0];
+        [self.view addSubview:view_player_layer];
+        [view_push setHidden:NO];
+        
+        [view_push setHidden:NO];
+        [btn_download setHidden:NO];
+        [btn_savelist setHidden:NO];
+        [btn_time setHidden:NO];
+        [lbl_download setHidden:NO];
+        [lbl_savelist setHidden:NO];
+        [lbl_time setHidden:NO];
+        [lbl_title setHidden:NO];    }
+    view_landscap_background=[[UIView alloc]initWithFrame:CGRectMake(0,self.view.frame.size.height, moviePlayerController.view.frame.size.width, 10)];
+    [view_landscap_background setBackgroundColor:[UIColor whiteColor]];
+    [moviePlayerController.view addSubview:view_landscap_background];
+    view_landscap_background.hidden=YES;
+    
+}
+
+//#pragma mark  TableView Delegate
+//- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+//{
+//
+//    return [tableData count];
+//}
+//- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+//{
+//    static NSString *simpleTableIdentifier = @"SimpleTableItem";
+//
+//    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:simpleTableIdentifier];
+//
+//    if (cell == nil) {
+//        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:simpleTableIdentifier];
+//    }
+//
+//    cell.textLabel.text = [tableData objectAtIndex:indexPath.row];
+//    return cell;
+//}
+//-(void)tableView:(UITableView *)tableView didDeselectRowAtIndexPath:(NSIndexPath *)indexPath{
+//
+//
+//
+//}
+//-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+//    NSLog(@"....................%d",indexPath.row);
+//    NSString *filepath = [NSString stringWithFormat:@"%@",arr_URL[indexPath.row]];
+//    NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+//    //moviePlayerController = [[MPMoviePlayerController alloc] initWithContentURL:fileURL];
+//    moviePlayerController.contentURL=fileURL;
+//    [moviePlayerController play];
+//}
+
+
+#pragma mark  TableView Delegate
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return screenWidth/5.3;
+}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    
+    return arr_URL.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *simpleTableIdentifier = @"SimpleTableItem";
+    
+    Cell *cell = [table_view dequeueReusableCellWithIdentifier:simpleTableIdentifier];
+    
+    if (cell == nil) {
+        cell = [[Cell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:simpleTableIdentifier];
+    }
+    
+    //    if (cell == nil) {
+    //        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:simpleTableIdentifier];
+    //        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(10.0f, 0.0f, cell.frame.size.width, cell.frame.size.height/2)];
+    //        lbl.text = [arr_video_info objectAtIndex:indexPath.row];
+    //        lbl.font=[UIFont systemFontOfSize:10];
+    //        lbl.lineBreakMode=NSLineBreakByWordWrapping;
+    //        lbl.numberOfLines=0;
+    //
+    //        [cell.contentView addSubview:lbl];
+    //
+    //    }
+    
+    //cell.textLabel.text =  [arr_video_info objectAtIndex:indexPath.row];
+    cell.textLabel.text =[[NSString stringWithFormat:@"%@\n\n",[arr_video_info objectAtIndex:indexPath.row] ] uppercaseString];
+    cell.textLabel.textColor = [UIColor darkGrayColor];
+    cell.textLabel.font=[UIFont systemFontOfSize:9];
+    cell.textLabel.lineBreakMode=NSLineBreakByWordWrapping;
+    cell.textLabel.numberOfLines = 0;
+    cell.indentationWidth  = 100;
+    
+    cell.detailTextLabel.text=[[arr_video_title objectAtIndex:indexPath.row] uppercaseString];
+    cell.detailTextLabel.font=[UIFont systemFontOfSize:10];
+    //cell.detailTextLabel.lineBreakMode=NSLineBreakByWordWrapping;
+    cell.detailTextLabel.numberOfLines=2;
+    cell.detailTextLabel.textColor=APP_COLOR;
+    //[cell setIndentationLevel:10];
+    //    CGRect textLabelFrame = cell.textLabel.frame;
+    //    textLabelFrame.origin.y += 100;
+    //textLabelFrame.size.width -= 100;
+    //    cell.textLabel.frame = textLabelFrame;
+    //    [cell setIndentationWidth:100];
+    [cell  layoutSubviews];
+    
+    // [cell setIndentationLevel:20];
+    // [cell setIndentationWidth:300];
+    
+    // UIView *viewRound = [[UIView alloc]initWithFrame:CGRectMake(5,10, 10, 10)];
+    cell.contentView.layer.borderWidth = 2.0;
+    cell.contentView.layer.borderColor = APP_COLOR.CGColor;
+    cell.contentView.layer.cornerRadius = 5.0;
+    
+    NSString *strCurVal =  [[NSUserDefaults standardUserDefaults] objectForKey:@"cur_play"];
+    cell.contentView.backgroundColor = [UIColor whiteColor];
+    if ([strCurVal integerValue] != indexPath.row) {
+        cell.contentView.backgroundColor = [UIColor whiteColor];
+    }else {
+        cell.contentView.backgroundColor = APP_COLOR;
+    }
+    //[cell.contentView addSubview:viewRound];
+    
+    //NSLog(@"Current Play Video Id %@",strCurVal);
+    return cell;
+}
+
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    NSLog(@"....................%ld",(long)indexPath.row);
+    if (indexPath.row==0)
+    {
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL"]!=nil) {
+            moviePlayerController.contentURL=[NSURL URLWithString: [[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL"] ];
+            [moviePlayerController play];
+            
+        }
+    }
+    else if (indexPath.row==1)
+    {
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL2"]!=nil) {
+            
+            moviePlayerController.contentURL=[NSURL URLWithString: [[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL2"] ];
+            [moviePlayerController play];
+        }
+        
+        
+    }
+    else{
+        
+        [arr_bookmark removeAllObjects];
+        //view_book=nil;
+        
+        NSString *filepath = [NSString stringWithFormat:@"%@",arr_URL[indexPath.row]];
+        str_url=filepath;
+        
+        [arr_bookmark addObjectsFromArray:[self retrive_bookmark:str_url]];
+        [self draw_book_first];
+        
+        NSURL *fileURL;
+        fileURL = [NSURL URLWithString: filepath];
+        
+        //        NSString *strLocalURL=[self getLocalVideoURL:filepath];
+        //        if (strLocalURL!=nil && strLocalURL.length>0) {
+        //            filepath = strLocalURL;
+        //            fileURL =[NSURL fileURLWithPath:filepath];
+        //        }
+        
+        //NSURL *fileURL = [NSURL fileURLWithPath:filepath];
+        
+        
+        
+        //moviePlayerController = [[MPMoviePlayerController alloc] initWithContentURL:fileURL];
+        moviePlayerController.contentURL=fileURL;
+        [moviePlayerController play];
+        cnt_draw_view=1;
+    }
+    
+    [[NSUserDefaults standardUserDefaults] setValue:[NSString stringWithFormat:@"%zd",indexPath.row]forKey:@"cur_play"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    
+    cur_playVideo = indexPath.row;
+    [self btn_download_UIComponent];
+    [table_view reloadData];
+    //NSLog(@"Current Play Video %zd",cur_playVideo);
+}
+
+-(void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if ([cell respondsToSelector:@selector(setSeparatorInset:)]) {
+        [cell setSeparatorInset:UIEdgeInsetsZero];
+    }
+    
+    if ([cell respondsToSelector:@selector(setLayoutMargins:)]) {
+        [cell setLayoutMargins:UIEdgeInsetsZero];
+    }
+    
+    cell.backgroundColor=[APP_COLOR colorWithAlphaComponent:0.4];
+    [UIView animateWithDuration:0.5 animations:^{
+        cell.backgroundColor=[UIColor whiteColor];
+    }];
+    
+    //    CGRect textLabelFrame = cell.textLabel.frame;
+    //    textLabelFrame.origin.x += 10;
+    //    textLabelFrame.size.width -= 10;
+    //    cell.textLabel.frame = textLabelFrame;
+}
+
+-(void)viewDidLayoutSubviews
+{
+    if ([table_view respondsToSelector:@selector(setSeparatorInset:)]) {
+        [table_view setSeparatorInset:UIEdgeInsetsZero];
+    }
+    
+    if ([table_view respondsToSelector:@selector(setLayoutMargins:)]) {
+        [table_view setLayoutMargins:UIEdgeInsetsZero];
+    }
+}
+
+#pragma mark  Orientation stuff
+- (void)orientationChanged:(NSNotification *)notification
+{
+    [self adjustViewsForOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
+}
+
+- (void) adjustViewsForOrientation:(UIInterfaceOrientation) orientation {
+    
+    switch (orientation)
+    {
+        case UIInterfaceOrientationPortrait:
+        case UIInterfaceOrientationPortraitUpsideDown:
+        {
+            view_landscap_background.hidden=YES;
+            
+            //            btnAddPodcast=[[UIButton alloc]initWithFrame:CGRectMake(screenWidth-60, -5, 30, 30)];
+            //
+            //            [btnAddPodcast addTarget:self
+            //                              action:@selector(act_addPodcast:)
+            //                    forControlEvents:UIControlEventTouchDown];
+            //
+            //            img_btn=[self imagedraw];
+            //
+            //            [btnSetting setImage:img_btn forState:UIControlStateNormal];
+            //            [btnSetting addTarget:self
+            //                           action:@selector(act_setting:)
+            //                 forControlEvents:UIControlEventTouchDown];
+            //
+            //            [btnAddPodcast setImage:img_btn forState:UIControlStateNormal];
+            //            [btnAddPodcast setTintColor:APP_COLOR];
+            //
+            //            [ScrollView addSubview:btnAddPodcast];
+            //
+            //            lblAddPodcast=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth-130, -10, 100, 40)];
+            //            lblAddPodcast.text=@"ADD PODCAST";
+            //            [lblAddPodcast setFont:[UIFont systemFontOfSize:8]];
+            //            lblAddPodcast.textColor=APP_COLOR;
+            //            [ScrollView addSubview:lblAddPodcast];
+            //
+            //
+            //            // lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-30, 200, 40)];
+            //            lblPlayHead=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-50, 200, 40)];
+            //            lblPlayHead.text=@"PLAYHEAD";
+            //            [lblPlayHead setFont:[UIFont systemFontOfSize:8]];
+            //            lblPlayHead.textColor=APP_COLOR;
+            //            [self.View_video addSubview:lblPlayHead];
+            //
+            //
+            //            //lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-45, 200, 40)];
+            //            lblBuffer=[[UILabel alloc]initWithFrame:CGRectMake(10, self.View_video.bounds.size.height-60, 200, 40)];
+            //
+            //            lblBuffer.text=@"BUFFERING";
+            //            [lblBuffer setFont:[UIFont systemFontOfSize:8]];
+            //            lblBuffer.textColor=APP_COLOR;
+            //            [self.View_video addSubview:lblBuffer];
+            //
+            //
+            //
+            //            lblPlay=[[UILabel alloc]initWithFrame:CGRectMake(screenWidth/3.5, self.View_video.bounds.size.height-50, 200, 40)];
+            //            lblPlay.text=@"PLAY";
+            //            [lblPlay setFont:[UIFont systemFontOfSize:8]];
+            //            lblPlay.textColor=APP_COLOR;
+            //            [self.View_video addSubview:lblPlay];
+            //
+            //
+            //            lblBookmark=[[UILabel alloc]initWithFrame:CGRectMake(self.view.frame.size.width/2, self.View_video.bounds.size.height-50, 100, 40)];
+            //            lblBookmark.text=@"Bookmark";
+            //            [lblBookmark setFont:[UIFont systemFontOfSize:8]];
+            //            lblBookmark.textColor=APP_COLOR;
+            //
+            //            [self.View_video addSubview:lblBookmark];
+            //
+            //            spinner= [[UIActivityIndicatorView alloc] initWithFrame: CGRectMake(0, 0, 30, 30)];
+            //            spinner.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
+            //            [moviePlayerController.view addSubview: spinner];
+            //            [spinner startAnimating];
+            //            spinner.center=moviePlayerController.view.center;
+            //
+            //
+            //            view_load=[[UIView alloc]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
+            //            view_load.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.5];
+            //            UIActivityIndicatorView * ai = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+            //            ai.center=view_load.center;
+            //            [ai startAnimating];
+            //            [view_load addSubview:ai];
+            //            [self.view bringSubviewToFront:view_load];
+            //            [self.view addSubview:view_load];
+            //
+            //            if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+            //            {
+            //                NSLog(@"Landscape detect.....................");
+            //
+            //                //        lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, lblBuffer.frame.origin.y+50, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+            //                //        lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, lblPlayHead.frame.origin.y+50, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+            //                //        lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y+50, lblPlay.frame.size.width, lblPlay.frame.size.height);
+            //                //        lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y+50, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+            //                //
+            //                lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, lblBuffer.frame.origin.y+150, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+            //                lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, lblPlayHead.frame.origin.y+150, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+            //                lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y+150, lblPlay.frame.size.width, lblPlay.frame.size.height);
+            //                lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y+150, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+            //
+            //                view_seek.hidden=YES;
+            //
+            //            }
+            
+            table_view.hidden=NO;
+            NSLog(@"Portait view...........");
+            [view_push setHidden:NO];
+            
+            [view_push setHidden:NO];
+            [btn_download setHidden:NO];
+            [btn_savelist setHidden:NO];
+            [btn_time setHidden:NO];
+            [lbl_download setHidden:NO];
+            [lbl_savelist setHidden:NO];
+            [lbl_time setHidden:NO];
+            [lbl_title setHidden:NO];
+            ScrollView.contentSize = CGSizeMake(self.view.frame.size.width,ScrollView.frame.size.height);
+            
+            self.View_video.frame=CGRectMake(0, 50, screenWidth, [UIScreen mainScreen].bounds.size.height/2.4);
+            //self.View_video.frame=CGRectMake(0, 200, 100, 100);
+            
+            table_view.frame=CGRectMake(0, self.view.bounds.size.height-(self.View_video.frame.size.height+10), screenWidth, self.view.bounds.size.height-CGRectGetMaxY(self.View_video.frame)-screenWidth/5.3);
+            
+            [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.View_video.frame.size.height/1.5)];
+            
+            //[moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.View_video.frame.size.height-50)];
+            //btnAddPodcast.frame=CGRectMake(screenWidth-200, 5, 100, 40);
+            //lblAddPodcast.frame=CGRectMake(screenWidth-100, 5, 100, 40);
+            btnAddPodcast.frame=CGRectMake(screenWidth-50, 8, 30, 30);
+            
+            lblAddPodcast.frame=CGRectMake(screenWidth-120, 3, 100, 40);
+            lblPlay.frame=CGRectMake(screenWidth/3.1, moviePlayerController.view.bounds.size.height, 200, 40);
+            lbl_title.frame=CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height, 200, 40);
+            NSLog(@".............%f",self.view.frame.size.width);
+            lblBookmark.frame=CGRectMake(self.view.frame.size.width/2, moviePlayerController.view.bounds.size.height, 100, 40);
+            //table_view.frame=CGRectMake(table_view.frame.origin.x, table_view.frame.origin.y, self.view.frame.size.width, table_view.frame.size.height);
+            spinner.center=moviePlayerController.view.center;
+            
+            //            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+            
+            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+            
+            view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+            
+            //[view_book removeFromSuperview];
+            [self draw_book];
+            
+            lblBuffer.frame=CGRectMake(10, moviePlayerController.view.bounds.size.height-10, 200, 40);
+            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+            lblPlayHead.frame=CGRectMake(10, moviePlayerController.view.bounds.size.height, 200, 40);
+            //lblPlay.frame=CGRectMake(lblPlay.frame.origin.x, lblPlay.frame.origin.y-50, lblPlay.frame.size.width, lblPlay.frame.size.height);
+            //lblBookmark.frame=CGRectMake(lblBookmark.frame.origin.x, lblBookmark.frame.origin.y-50, lblBookmark.frame.size.width, lblBookmark.frame.size.height);
+            
+            //ScrollView.scrollEnabled=YES;
+            table_view.scrollEnabled=YES;
+            
+            //view_player_layer.frame=self.view.bounds;
+            
+            view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height+73, self.view.frame.size.width, 100);
+            
+            view_drag.hidden=YES;
+            
+            if(![view_drag_portait isDescendantOfView:self.view])
+            {
+                //NSLog(@"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+                view_drag_portait=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width, CGRectGetMaxY(self.View_video.frame)- CGRectGetMaxY(moviePlayerController.view.frame))];
+                view_drag_portait.backgroundColor=[[UIColor blackColor] colorWithAlphaComponent:0.0];
+                
+                
+                UIPanGestureRecognizer *drag1 = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragging:)];
+                
+                [view_drag_portait addGestureRecognizer:drag1];
+                [self.View_video addSubview:view_drag_portait];
+                
+                view_line=[[UIView alloc]initWithFrame:CGRectMake(0, self.view.bounds.size.height-(self.View_video.frame.size.height+11), self.View_video.frame.size.width, 1)];
+                view_line.backgroundColor=APP_COLOR;
+                [ScrollView addSubview:view_line];
+                
+            }
+            else
+            {
+                view_drag_portait.hidden=NO;
+                view_line.hidden=NO;
+            }
+            
+            if (![btn_remove_bookmark isDescendantOfView:view_drag_portait])
+            {
+                btn_remove_bookmark=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-100, 5, 85, 18)];
+                //#UPDATE
+                //[view_drag_portait addSubview:btn_remove_bookmark];
+            }
+            
+            [btn_remove_bookmark setTitle:@"Remove Bookmark" forState:UIControlStateNormal];
+            btn_remove_bookmark.titleLabel.font=[UIFont systemFontOfSize:8];
+            [btn_remove_bookmark setTitleColor:APP_COLOR forState:UIControlStateNormal];
+            btn_remove_bookmark.layer.cornerRadius=10;
+            btn_remove_bookmark.layer.borderWidth=1;
+            btn_remove_bookmark.layer.borderColor=APP_COLOR.CGColor;
+            [btn_remove_bookmark addTarget:self action:@selector(act_remove_bookmark:) forControlEvents:UIControlEventTouchUpInside];
+            
+            view_load.frame=CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
+            
+            //view_player_layer.frame=moviePlayerController.view.bounds;
+            view_player_layer.frame=CGRectMake(self.View_video.frame.origin.x, self.View_video.frame.origin.y+20,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height);
+            [table_view reloadData];
+        }
+            
+            break;
+        case UIInterfaceOrientationLandscapeLeft:
+        case UIInterfaceOrientationLandscapeRight:
+        {
+            view_landscap_background.hidden=YES;
+            
+            [view_push setHidden:YES];
+            [btn_download setHidden:YES];
+            [btn_savelist setHidden:YES];
+            [btn_time setHidden:YES];
+            [lbl_download setHidden:YES];
+            [lbl_savelist setHidden:YES];
+            [lbl_time setHidden:YES];
+            [lbl_title setHidden:YES];
+            view_drag.hidden=NO;
+            view_drag_portait.hidden=YES;
+            table_view.hidden=YES;
+            NSLog(@"Landscap view...........");
+            //[moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.View_video.frame.size.height-50)];
+            ScrollView.contentOffset = CGPointMake(0,50);
+            ScrollView.scrollEnabled=NO;
+            table_view.contentOffset=CGPointMake(0, 0);
+            table_view.scrollEnabled=NO;
+            [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height)];
+            //btnAddPodcast.frame=CGRectMake(screenWidth-200, 10, 100, 40);
+            //lblAddPodcast.frame=CGRectMake(screenWidth-100, 10, 100, 40);
+            
+            btnAddPodcast.frame=CGRectMake(screenWidth-60, -5, 50, 50);
+            lblAddPodcast.frame=CGRectMake(screenWidth-140, 0, 100, 40);
+            
+            //            lblPlay.frame=CGRectMake(screenWidth/2.5, self.View_video.bounds.size.height+10, 100, 40);
+            //            lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, self.View_video.bounds.size.height+10, 100, 40);
+            //           lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, self.View_video.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+            //            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+            //            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, self.View_video.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+            //
+            
+            lblPlay.frame=CGRectMake(screenWidth/2.5, moviePlayerController.view.bounds.size.height+10, 100, 40);
+            lbl_title.frame=CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height+10, 100, 40);
+            lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, moviePlayerController.view.bounds.size.height+10, 100, 40);
+            lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+            
+            spinner.center=moviePlayerController.view.center;
+            // table_view.frame=CGRectMake(table_view.frame.origin.x, table_view.frame.origin.y, self.view.frame.size.width, table_view.frame.size.height);
+            NSLog(@".............%f",self.view.frame.size.width);
+            
+            //            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+            //
+            
+            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+            
+            
+            view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+            
+            //[view_book removeFromSuperview];
+            
+            [self draw_book];
+            
+            //view_player_layer.frame=moviePlayerController.view.bounds;
+            
+            
+            
+            view_player_layer.frame=self.view.bounds;
+            
+            
+            view_drag.frame=CGRectMake(0, self.view.frame.size.height,moviePlayerController.view.frame.size.width, 25);
+            
+            view_load.frame=CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
+            //view_book.removeFromSuperview;
+            view_line.hidden=YES;
+            
+        }
+            break;
+        case UIInterfaceOrientationUnknown:break;
+    }
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+}
+
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                     withVelocity:(CGPoint)velocity
+              targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+    NSLog(@"scrollViewWillEndDragging.................");
+    
+    CGPoint currentOff = scrollView.contentOffset;
+    if (cnt_scroll==1) {
+        NSLog(@"scrollViewWillEndDragging.................");
+        
+        cnt_scroll=0;
+        cnt_book++;
+        //NSLog(@"..................top");
+        
+        float bookmark=moviePlayerController.currentPlaybackTime;
+        if (isnan(bookmark))
+        {
+            
+        }
+        
+        else
+        {
+            BOOL match=false;
+            for (int i=0; i<arr_bookmark.count; i++)
+            {
+                if ([arr_bookmark[i] floatValue]==bookmark) {
+                    match=YES;
+                }
+            }
+            
+            if (!match) {
+                //#UPDATE                [arr_bookmark addObject:[NSString stringWithFormat:@"%f",bookmark]];
+                //#UPDATE                [self draw_book];
+                NSLog(@"add book mark ..............................");
+            }
+        }
+    }
+}
+
+-(void)scrollViewDidScroll: (UIScrollView*)scrollView
+{
+    float scrollViewHeight = scrollView.frame.size.height;
+    float scrollContentSizeHeight = scrollView.contentSize.height;
+    float scrollOffset = scrollView.contentOffset.y;
+    
+    //NSLog(@"..................%f",scrollOffset);
+    
+    if (scrollOffset == -20)
+    {
+        cnt_scroll=1;
+        //        cnt_book++;
+        //        //NSLog(@"..................top");
+        //
+        //        float bookmark=moviePlayerController.currentPlaybackTime;
+        //
+        //
+        //        if (isnan(bookmark)) {
+        //
+        //        }
+        //        else{
+        //
+        //            BOOL match=false;
+        //
+        //            for (int i=0; i<arr_bookmark.count; i++) {
+        //
+        //                if ([arr_bookmark[i] floatValue]==bookmark) {
+        //
+        //                    match=YES;
+        //
+        //                }
+        //            }
+        //
+        //            if (!match) {
+        //
+        //                [arr_bookmark addObject:[NSString stringWithFormat:@"%f",bookmark]];
+        //
+        //                NSLog(@"add book mark ..............................");
+        //            }
+        //
+        //
+        //
+        //
+        //        }
+        //
+        //        [self draw_book];
+        //        view_book=[[UIView alloc]initWithFrame:CGRectMake(pos_playhead, 0, 2, 7)];
+        //        view_book.backgroundColor=APP_COLOR;
+        //        [view_control_back addSubview:view_book];
+        //        view_book.tag=cnt_book;
+        //        [view_control_back bringSubviewToFront:view_book];
+        
+    }
+    else if(0<scrollOffset){
+        cnt_scroll=0;
+        //NSLog(@"######################### -----%f",scrollOffset);
+    }
+}
+
+
+-(UIImage *)imagedraw:(BOOL) fill
+{
+    CGSize size=CGSizeMake(30, 30);
+    //UIGraphicsBeginImageContext(size);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);
+    // draw original image into the context
+    // get the context for CoreGraphics
+    
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGContextSetLineWidth(ctx, 3);
+    CGContextSetStrokeColorWithColor(ctx, APP_COLOR.CGColor);// set stroking color and draw circle
+    // make circle rect 5 px from border
+    CGRect circleRect = CGRectMake(0,0,
+                                   30,
+                                   30);
+    circleRect = CGRectInset(circleRect, 5, 5);
+    // draw circle
+    CGContextStrokeEllipseInRect(ctx, circleRect);
+    if (fill) {
+        CGContextFillEllipseInRect(ctx, circleRect);
+    }
+    // make image out of bitmap context
+    UIImage *retImage = UIGraphicsGetImageFromCurrentImageContext();
+    // free the context
+    UIGraphicsEndImageContext();
+    return retImage;
+}
+
+
+- (void)MPMoviePlayerPlaybackStateDidChange:(NSNotification *)notification
+{
+    //are we currently playing?
+    if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying)
+    {
+        if (cnt_timer==1)
+        {
+            [NSTimer scheduledTimerWithTimeInterval:0.1
+                                             target:self
+                                           selector:@selector(tick:)
+                                           userInfo:nil
+                                            repeats:YES];
+            cnt_timer=0;
+        }
+        NSLog(@"playing...................");
+        lblPlay.textColor=APP_COLOR;
+        lblPlay.text=@"PLAY";
+        //spinner.stopAnimating;
+    }
+    else
+    {
+        //[spinner startAnimating];
+        lblPlay.textColor=[UIColor redColor];
+        lblPlay.text=@"PAUSED";
+    }
+}
+
+- (void) tick:(NSTimer *) timer
+{
+    time_total=moviePlayerController.duration;
+    time_curr=moviePlayerController.currentPlaybackTime;
+    time_buff=moviePlayerController.playableDuration;
+    
+    NSTimeInterval currentProgress = moviePlayerController.currentPlaybackTime;
+    
+    float min = floor(currentProgress/60);
+    float sec = round(currentProgress - min * 60);
+    
+    NSString *strPlayMinutes = [[NSString stringWithFormat:@"%02d",abs((int)min)] substringToIndex:2];
+    NSString *strPlaySeconds = [[NSString stringWithFormat:@"%02d",abs((int)sec)] substringToIndex:2];
+    
+    NSString *time = [NSString stringWithFormat:@"PLAYHEAD    %@:%@", strPlayMinutes, strPlaySeconds];
+    lblPlayHead.text=time;
+    
+    //BUFFERING
+    NSTimeInterval buffProgress = moviePlayerController.playableDuration;
+    
+    float min1 = floor(buffProgress/60);
+    float sec1 = round(buffProgress - min * 60);
+    
+    NSString *strBufMinutes = [[NSString stringWithFormat:@"%02d",abs((int)min1)] substringToIndex:2];
+    NSString *strBufSeconds = [[NSString stringWithFormat:@"%02d",abs((int)sec1)] substringToIndex:2];
+    
+    
+    NSString *time1 = [NSString stringWithFormat:@"BUFFERING   %@:%@", strBufMinutes, strBufSeconds];    lblBuffer.text=time1;
+    
+    int percentage = moviePlayerController.playableDuration / moviePlayerController.duration;
+    //self.progressLabel.text = [NSString stringWithFormat:@"%d%%", percentage];
+    //NSLog(@"!!!!!...................%@",[NSString stringWithFormat:@"%d%%", percentage]);
+    
+    // NSLog(@"Playable_duration=%@ \n Duration=%@  \n currentplay=%@",[NSString stringWithFormat:@"%f", moviePlayerController.playableDuration],[NSString stringWithFormat:@"%f", moviePlayerController.duration],[NSString stringWithFormat:@"%f", moviePlayerController.currentPlaybackTime]);
+    
+    
+    if (5<(moviePlayerController.playableDuration-moviePlayerController.currentPlaybackTime)) {
+        if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying) {
+        }
+        else{
+            // [moviePlayerController play];
+        }
+    }
+    
+    //    time_total          100
+    //    time_current
+    //
+    
+    time_per_curr=(time_curr*100)/time_total;
+    time_per_buff=(time_buff*100)/time_total;
+    
+    // NSLog(@"__________________________%f",time_per_curr);
+    //    100        view_total_lenth
+    //    20
+    //
+    
+    pos_playhead=(time_per_curr*view_control.frame.size.width)/100;
+    pos_buff=(time_per_buff*view_control.frame.size.width)/100;
+    
+    
+    //    NSLog(@"--------------------------%f",pos_playhead);
+    //    NSLog(@"--------------------------%f",pos_buff);
+    
+    
+    //    view_control.frame=CGRectMake(pos_playhead, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+    //
+    
+    
+    if (!isnan(pos_playhead) && !isnan(pos_buff)) {
+        
+        view_control.frame=CGRectMake(pos_playhead, 0,moviePlayerController.view.frame.size.width, 2);
+        view_buff.frame=CGRectMake(0, 0, pos_buff-pos_playhead, 2);
+        
+        if (cnt_draw_view) {
+            [self draw_book_first];
+            cnt_draw_view=0;
+        }
+        //[self draw_book];
+    }
+}
+
+- (void) tick_delay:(NSTimer *) timer
+{
+    
+    
+}
+
+-(void)loadStateChanged:(NSNotification *)notif
+{
+    NSString *loadState=@"";
+    switch (moviePlayerController.loadState)
+    {
+        case MPMovieLoadStateUnknown: {
+            loadState=@"MPMovieLoadStateUnknown";
+            break;
+        }
+        case MPMovieLoadStatePlayable: {
+            loadState=@"MPMovieLoadStatePlayable";
+            //[moviePlayerController play];
+            [spinner stopAnimating];
+            break;
+        }
+        case MPMovieLoadStatePlaythroughOK: {
+            loadState=@"MPMovieLoadStatePlaythroughOK";
+            break;
+        }
+        case MPMovieLoadStateStalled:
+        {
+            loadState=@"MPMovieLoadStateStalled";
+            break;
+        }
+    }
+    NSLog(@"%@", loadState);
+}
+
+-(void)act_addPodcast:(UIButton *)sender
+{
+    
+    NSLog(@"act_addPodcast,,,,,,,,,,,,,,,,,,");
+    //
+    //
+    //    UIImage *singleFrameImage = [moviePlayerController thumbnailImageAtTime:1
+    //                                                 timeOption:MPMovieTimeOptionExact];
+    //    UIImage *img_btn=[[UIImage alloc]init];
+    //    img_btn=singleFrameImage;
+    //
+    //    NSLog(@".............%f",singleFrameImage.size.width);
+    
+    //    view_player_layer.hidden=NO;
+    [self performSegueWithIdentifier:@"id_segue_add_podcast" sender:self];
+    
+}
+
+-(void)act_setting:(UIButton *)sender
+{
+    /* Vivek Change
+     
+     [self performSegueWithIdentifier:@"id_segue_setting" sender:self];
+     */
+    //[self performSegueWithIdentifier:@"home_segue_back" sender:self];
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+-(void)draw_book_first
+{
+    NSLog(@"arr count.......................%zd",arr_bookmark.count);
+    
+    [view_book removeFromSuperview];
+    view_book=nil;
+    
+    view_book=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, 0,moviePlayerController.view.frame.size.width, 5)];
+    view_book.backgroundColor=[UIColor clearColor];
+    
+    
+    float time_book,pos_book;
+    
+    for (int i=0; i<arr_bookmark.count; i++) {
+        
+        
+        time_book=([arr_bookmark[i] floatValue]*100)/moviePlayerController.duration;
+        
+        //NSLog(@"$$$$$............%f",time_book);
+        
+        if (!isnan(time_book)) {
+            
+            pos_book=(time_book*view_control.frame.size.width)/100;
+            
+            
+            UIView *myBox  = [[UIView alloc] initWithFrame:CGRectMake(pos_book, 0, 2, 5)];
+            myBox.backgroundColor = APP_COLOR;
+            [view_book addSubview:myBox];
+            
+            NSLog(@"not nan____________________________");
+        }
+        else{
+            
+            NSLog(@"not nan++++++++++++++++++++++++++++");
+            
+        }
+        
+    }
+    [view_control_back addSubview:view_book];
+}
+
+-(void )draw_book
+{
+    
+    //    NSLog(@"arr count.......................%d",arr_bookmark.count);
+    //
+    //    view_book=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+5,moviePlayerController.view.frame.size.width, 5)];
+    //    view_book.backgroundColor=[UIColor greenColor];
+    //
+    //
+    //
+    //    if (![self.View_video.subviews containsObject:view_book]) {
+    //
+    //        view_book.removeFromSuperview;
+    //
+    //
+    //        float time_book,pos_book;
+    //
+    //        for (int i=0; i<arr_bookmark.count; i++) {
+    //
+    //
+    //            time_book=([arr_bookmark[i] floatValue]*100)/moviePlayerController.duration;
+    //
+    //            //NSLog(@"$$$$$............%f",time_book);
+    //
+    //
+    //            pos_book=(time_book*view_control.frame.size.width)/100;
+    //
+    //            UIView *myBox  = [[UIView alloc] initWithFrame:CGRectMake(pos_book, 0, 5, 5)];
+    //            myBox.backgroundColor = [UIColor lightGrayColor];
+    //            [view_book addSubview:myBox];
+    //        }
+    //
+    //
+    //        [self.View_video addSubview:view_book];
+    //
+    //
+    //    }
+    //    else{
+    //        view_book.removeFromSuperview;
+    //
+    //        float time_book,pos_book;
+    //
+    //        for (int i=0; i<arr_bookmark.count; i++) {
+    //
+    //
+    //            time_book=([arr_bookmark[i] floatValue]*100)/moviePlayerController.duration;
+    //
+    //            //NSLog(@"$$$$$............%f",time_book);
+    //
+    //
+    //
+    //
+    //            pos_book=(time_book*view_control.frame.size.width)/100;
+    //
+    //            UIView *myBox  = [[UIView alloc] initWithFrame:CGRectMake(pos_book, 0, 5, 5)];
+    //            myBox.backgroundColor = [UIColor lightGrayColor];
+    //            [view_book addSubview:myBox];
+    //        }
+    //
+    //
+    //        [self.View_video addSubview:view_book];
+    //    }
+    
+    NSLog(@"arr count.......................%lu",(unsigned long)arr_bookmark.count);
+    
+    [view_book removeFromSuperview];
+    view_book=nil;
+    
+    view_book=[[UIView alloc]initWithFrame:CGRectMake(moviePlayerController.view.frame.origin.x, 0,moviePlayerController.view.frame.size.width, 5)];
+    view_book.backgroundColor=[UIColor clearColor];
+    
+    
+    float time_book,pos_book;
+    
+    for (int i=0; i<arr_bookmark.count; i++)
+    {
+        time_book=([arr_bookmark[i] floatValue]*100)/moviePlayerController.duration;
+        
+        //NSLog(@"$$$$$............%f",time_book);
+        
+        if (!isnan(time_book))
+        {
+            pos_book=(time_book*view_control.frame.size.width)/100;
+            
+            UIView *myBox  = [[UIView alloc] initWithFrame:CGRectMake(pos_book, 0, 2, 5)];
+            myBox.backgroundColor = [APP_COLOR colorWithAlphaComponent:1];
+            [view_book addSubview:myBox];
+            
+            NSLog(@"not nan____________________________");
+        }
+        else
+        {
+            NSLog(@"not nan++++++++++++++++++++++++++++");
+        }
+    }
+    
+    [view_control_back addSubview:view_book];
+    [self add_bookmark];
+    
+}
+
+-(void)dragging:(UIPanGestureRecognizer *)gesture
+{
+    
+    //    float per_time,drag_time,point_x,point_seek_x;
+    //    BOOL drag_check;
+    //    drag_check=false;
+    //
+    //
+    //
+    //
+    //    if(gesture.state == UIGestureRecognizerStateBegan)
+    //    {
+    //        NSLog(@"Received a pan gesture");
+    //        //self.panCoord = [gesture locationInView:gesture.view];
+    //        point_seek_x=view_control.frame.origin.x;
+    //        view_seek_bar.hidden=false;
+    //
+    //        NSLog(@"-------------%f",view_seek.frame.origin.x);
+    //        NSLog(@"============%f",[gesture locationInView:gesture.view].x);
+    //
+    //
+    //        //        if (view_seek.frame.origin.x-20<[gesture locationInView:gesture.view].x  && view_seek.frame.origin.x+20>[gesture locationInView:gesture.view].x) {
+    //        //
+    //        //            drag_check=true;
+    //        //            NSLog(@"Detaected //////////////");
+    //        //         }
+    //
+    //
+    //        NSLog(@"@@@@@@@@@@@@@@%f",view_seek.frame.origin.x+[gesture locationInView:gesture.view].x);
+    //
+    //
+    //        if ((view_seek.frame.origin.x+[gesture locationInView:gesture.view].x)<20  && (view_seek.frame.origin.x+[gesture locationInView:gesture.view].x)>-20) {
+    //
+    //            drag_check=true;
+    //            NSLog(@"Detaected //////////////");
+    //        }
+    //
+    //
+    //    }
+    //    //view_seek.backgroundColor=[UIColor greenColor];
+    //    //view_seek.frame=CGRectMake(view_seek.frame.origin.x, view_seek.frame.origin.y, view_seek.frame.size.width, 50);
+    //
+    //
+    //    if (drag_check) {a
+    //        view_seek.backgroundColor=APP_COLOR;
+    //
+    //
+    //        point_x=[gesture locationInView:gesture.view].x;
+    //        //view_seek.frame=CGRectMake(point_x,0,2, 7);
+    //
+    //        view_seek.frame=CGRectMake(point_x, 0, 2, view_drag_portait.frame.size.height);
+    //        view_seek_bar.frame=CGRectMake(pos_playhead, 0, -(pos_playhead-point_x), 5);
+    //
+    //    }
+    //
+    //    //    if(pos_playhead-point_x<0){
+    //    //
+    //    //        view_seek_bar.frame=CGRectMake(pos_playhead, 0, pos_playhead-point_x, 5);
+    //    //
+    //    //    }
+    //
+    //    //    NSLog(@"----------=%f",view_control.frame.origin.x);
+    //
+    //
+    //
+    //    if (gesture.state == UIGestureRecognizerStateEnded)
+    //    {
+    //        if(drag_check){
+    //
+    //            per_time=(100*point_x)/self.view.frame.size.width;
+    //            drag_time=(per_time*moviePlayerController.duration)/100;
+    //            moviePlayerController.currentPlaybackTime=drag_time;
+    //            view_seek.backgroundColor=[UIColor clearColor];
+    //
+    //            view_seek_bar.hidden=true;
+    //
+    //        }
+    //        drag_check=false;
+    //    }
+    
+    float per_time,drag_time,point_x,point_seek_x,point_y;
+    
+    //NSLog(@"-------posi touch=%f            posi playhead=%f",[gesture locationInView:gesture.view].x,view_control.frame.origin.x);
+    
+    point_x=[gesture locationInView:gesture.view].x;
+    point_y=[gesture locationInView:gesture.view].y;
+    
+    //
+    
+    if(gesture.state == UIGestureRecognizerStateBegan)
+    {
+        float diff=[gesture locationInView:gesture.view].x-view_control.frame.origin.x;
+        if (diff<0) {
+            diff=diff*(-1);
+        }
+        
+        NSLog(@"+++++++==%f",diff);
+        if(diff<25)
+        {
+            NSLog(@"+++++++==%f",diff);
+            drag_check=true;
+            view_playhead.hidden=true;
+            view_seek_bar.hidden=false;
+        }
+        
+        float diffPushViewX=[gesture locationInView:gesture.view].x-view_push.frame.origin.x;
+        float diffPushViewY=[gesture locationInView:gesture.view].y-view_push.frame.origin.y;
+        
+        if(diffPushViewX>30 && diffPushViewY<30)
+        {
+            float view_pushx = view_push.frame.origin.x;
+            float view_pushy = view_push.frame.origin.y;
+            if (point_x >= view_pushx && point_y <= view_pushy) {
+                NSLog(@"View Detected");
+                //[self pushViewController];
+            }
+        }
+        //        CGPoint aPoint = CGPointMake(point_x,point_y);
+        //        BOOL isPointInsideView = [view_push pointInside:aPoint withEvent:nil];
+        //        if (isPointInsideView == YES) {
+        //            NSLog(@"View Detected");
+        //            [self pushViewController];
+        //
+        //        }
+    }
+    
+    if (drag_check)
+    {
+        view_seek.backgroundColor=APP_COLOR;
+        point_x=[gesture locationInView:gesture.view].x;
+        //view_seek.frame=CGRectMake(point_x,0,2, 7);
+        
+        view_seek.frame=CGRectMake(point_x-30, 30, 30, 40);
+        view_seek_bar.frame=CGRectMake(pos_playhead, 0, -(pos_playhead-point_x), 5);
+    }
+    
+    if (gesture.state == UIGestureRecognizerStateEnded)
+    {
+        if(drag_check)
+        {
+            per_time=(100*point_x)/self.view.frame.size.width;
+            drag_time=(per_time*moviePlayerController.duration)/100;
+            moviePlayerController.currentPlaybackTime=drag_time;
+            view_seek.backgroundColor=[UIColor clearColor];
+            view_seek_bar.hidden=true;
+        }
+        drag_check=false;
+        view_playhead.hidden=false;
+    }
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if (touch.view != view_push) { // accept only touchs on superview, not accept touchs on subviews
+        return NO;
+    }
+    return YES;
+}
+
+-(void)act_remove_bookmark:(UIButton *)sender
+{
+    if (arr_bookmark.count)
+    {
+        [arr_bookmark removeObjectAtIndex:arr_bookmark.count-1];
+        //        if (arr_bookmark.count==1) {
+        //
+        //            arr_bookmark.removeAllObjects;
+        //            arr_bookmark=nil;
+        //        }
+        [self draw_book_first];
+        [self add_bookmark];
+    }
+}
+
+//- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+//    NSArray *allTouches = [touches allObjects];
+//
+//    for (UITouch *touch in allTouches)
+//    {
+//        CGPoint gestureStartPoint = [touch locationInView:view_player_layer];
+//        if([touch view] == view_player_layer){
+//            if (tap==NO) {
+//                [moviePlayerController pause];
+//
+//                if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+//                {
+//                    [UIView animateWithDuration:0.3 delay:0
+//                         usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+//                                        options:0 animations:^{
+//                                            [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height-self.view.frame.size.height/4)];
+//                                            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+//
+//
+//
+//                                            view_control_back.frame=CGRectMake(0, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+//                                            //view_player_layer.frame=moviePlayerController.view.bounds;
+//                                            view_player_layer.frame=CGRectMake(0,0,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height);
+//                                            lblPlay.frame=CGRectMake(screenWidth/3.5, moviePlayerController.view.bounds.size.height, 100, 40);
+//                                            lblBookmark.frame=CGRectMake(self.view.frame.size.width/2, moviePlayerController.view.bounds.size.height, 100, 40);
+//                                            lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height-10, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+//                                            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+//                                            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+//
+//                                            view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.width/3);
+//
+//                                            //view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height+73, self.view.frame.size.width, 100);
+//
+//
+//                                            NSLog(@"...............%f",moviePlayerController.view.frame.size.height+73);
+//
+//
+//                                            //view_drag.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width, 10);
+//                                            //btn_remove_bookmark_land.frame=CGRectMake(self.view.frame.size.width-100, 5, 85, 30);
+//
+//                                            if (![btn_remove_bookmark_land isDescendantOfView:view_drag]) {
+//                                                btn_remove_bookmark_land=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-100, 5, 85, 18)];
+//
+//                                                //#UPDATE
+//                                                //[view_drag addSubview:btn_remove_bookmark_land];
+//
+//                                                NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~not added");
+//                                            }
+//                                            else{
+//
+//                                                NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~added");
+//                                            }
+//
+//
+//                                            [btn_remove_bookmark_land setTitle:@"Remove Bookmark" forState:UIControlStateNormal];
+//                                            btn_remove_bookmark_land.titleLabel.font=[UIFont systemFontOfSize:8];
+//                                            [btn_remove_bookmark_land setTitleColor:APP_COLOR forState:UIControlStateNormal];
+//                                            btn_remove_bookmark_land.layer.cornerRadius=10;
+//                                            btn_remove_bookmark_land.layer.borderWidth=1;
+//                                            btn_remove_bookmark_land.layer.borderColor=APP_COLOR.CGColor;
+//                                            [btn_remove_bookmark_land addTarget:self action:@selector(act_remove_bookmark:) forControlEvents:UIControlEventTouchUpInside];
+//
+//
+//                                        } completion:nil];
+//                }
+//                spinner.center=moviePlayerController.view.center;
+//
+//                NSLog(@"..............pause");
+//                tap=YES;
+//            }
+//            else{
+//
+//                if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+//                {
+//
+//                    [UIView animateWithDuration:0.3 delay:0
+//                         usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+//                                        options:0 animations:^{
+//                                            [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height)];
+//                                            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+//
+//
+//
+//                                            view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+//                                            view_player_layer.frame=moviePlayerController.view.bounds;
+//
+//                                   lblPlay.frame=CGRectMake(screenWidth/2.5, moviePlayerController.view.bounds.size.height+10, 100, 40);
+
+//                                            lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, moviePlayerController.view.bounds.size.height+10, 100, 40);
+//                                            lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+//                                            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+//                                            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+//
+//                                            view_drag.frame=CGRectMake(0, self.view.frame.size.height,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height/3);
+//
+//
+//
+//                                        } completion:nil];
+//
+//
+//                }
+//                NSLog(@"..............play");
+//
+//
+//                spinner.center=moviePlayerController.view.center;
+//                [moviePlayerController play];
+//
+//
+//
+//
+//
+//                if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying) {
+//                    [spinner stopAnimating];
+//                }
+//                else{
+//
+//                }
+//
+//                tap=NO;
+//            }
+//
+//        }
+//    }
+//}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    NSArray *allTouches = [touches allObjects];
+    
+    for (UITouch *touch in allTouches)
+    {
+        CGPoint gestureStartPoint = [touch locationInView:view_player_layer];
+        if([touch view] == view_player_layer){
+            if (tap==NO) {
+                [moviePlayerController pause];
+                
+                if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+                {
+                    [UIView animateWithDuration:0.3 delay:0
+                         usingSpringWithDamping:0.7 initialSpringVelocity:0.0f
+                                        options:0 animations:^{
+                                            //[moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height-self.view.frame.size.height/4)];
+                                            
+                                            
+                                            view_landscap_background.frame=CGRectMake(0, (self.view.frame.size.height/4)*3, moviePlayerController.view.frame.size.width, self.view.frame.size.height/4);
+                                            view_landscap_background.hidden=NO;
+                                            
+                                            
+                                            
+                                            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+                                            
+                                            view_control_back.frame=CGRectMake(0, moviePlayerController.view.bounds.size.height-self.view.frame.size.height/4,moviePlayerController.view.frame.size.width, 2);
+                                            //view_player_layer.frame=moviePlayerController.view.bounds;
+                                            view_player_layer.frame=CGRectMake(0,0,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height-self.view.frame.size.height/4);
+                                            ;
+                                            lblPlay.frame=CGRectMake(screenWidth/3.5, moviePlayerController.view.bounds.size.height-self.view.frame.size.height/4, 100, 40);
+                                            lbl_title.frame=CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height-self.view.frame.size.height/4, 100, 40);
+                                            [lbl_title setHidden:NO];
+                                            
+                                            lblBookmark.frame=CGRectMake(self.view.frame.size.width/2, moviePlayerController.view.bounds.size.height-self.view.frame.size.height/4, 100, 40);
+                                            lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x,( moviePlayerController.view.bounds.size.height-10)-self.view.frame.size.height/4, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+                                            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+                                            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height-self.view.frame.size.height/4, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+                                            
+                                            
+                                            
+                                            view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height-self.view.frame.size.height/4,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.width/3);
+                                            
+                                            //view_drag.frame=CGRectMake(0, moviePlayerController.view.frame.size.height+73, self.view.frame.size.width, 100);
+                                            
+                                            
+                                            NSLog(@"...............%f",moviePlayerController.view.frame.size.height+73);
+                                            
+                                            
+                                            //view_drag.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height+2,moviePlayerController.view.frame.size.width, 10);
+                                            //btn_remove_bookmark_land.frame=CGRectMake(self.view.frame.size.width-100, 5, 85, 30);
+                                            
+                                            if (![btn_remove_bookmark_land isDescendantOfView:view_drag]) {
+                                                btn_remove_bookmark_land=[[UIButton alloc]initWithFrame:CGRectMake(self.view.frame.size.width-100, 5, 85, 18)];
+                                                
+                                                //#UPDATE
+                                                //[view_drag addSubview:btn_remove_bookmark_land];
+                                                NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~not added");
+                                            }
+                                            else{
+                                                
+                                                NSLog(@"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~added");
+                                            }
+                                            
+                                            [btn_remove_bookmark_land setTitle:@"Remove Bookmark" forState:UIControlStateNormal];
+                                            btn_remove_bookmark_land.titleLabel.font=[UIFont systemFontOfSize:8];
+                                            [btn_remove_bookmark_land setTitleColor:APP_COLOR forState:UIControlStateNormal];
+                                            btn_remove_bookmark_land.layer.cornerRadius=10;
+                                            btn_remove_bookmark_land.layer.borderWidth=1;
+                                            btn_remove_bookmark_land.layer.borderColor=APP_COLOR.CGColor;
+                                            [btn_remove_bookmark_land addTarget:self action:@selector(act_remove_bookmark:) forControlEvents:UIControlEventTouchUpInside];
+                                        } completion:nil];
+                }
+                spinner.center=CGPointMake(self.view.center.x, ((self.view.frame.size.height/4)*3)/2);
+                
+                NSLog(@"..............pause");
+                tap=YES;
+                
+            }
+            else
+            {
+                if (UIDeviceOrientationIsLandscape([UIDevice currentDevice].orientation))
+                {
+                    
+                    [UIView animateWithDuration:0.3 delay:0
+                         usingSpringWithDamping:0.4 initialSpringVelocity:0.0f
+                                        options:0 animations:^{
+                                            
+                                            view_landscap_background.hidden=YES;
+                                            
+                                            [moviePlayerController.view setFrame:CGRectMake(0,0, self.view.frame.size.width, self.view.frame.size.height)];
+                                            view_control.frame=CGRectMake(moviePlayerController.view.frame.origin.x,0,moviePlayerController.view.frame.size.width, 2);
+                                            
+                                            
+                                            
+                                            view_control_back.frame=CGRectMake(moviePlayerController.view.frame.origin.x, moviePlayerController.view.bounds.size.height,moviePlayerController.view.frame.size.width, 2);
+                                            view_player_layer.frame=moviePlayerController.view.bounds;
+                                            
+                                            lblPlay.frame=CGRectMake(screenWidth/2.5, moviePlayerController.view.bounds.size.height+10, 100, 40);
+                                            lbl_title.frame=CGRectMake(screenWidth/1.6, moviePlayerController.view.bounds.size.height+10, 100, 40);
+                                            [lbl_title setHidden:YES];
+                                            lblBookmark.frame=CGRectMake(self.view.frame.size.width-100, moviePlayerController.view.bounds.size.height+10, 100, 40);
+                                            lblBuffer.frame=CGRectMake(lblBuffer.frame.origin.x, moviePlayerController.view.bounds.size.height, lblBuffer.frame.size.width, lblBuffer.frame.size.height);
+                                            //screenWidth/2.5, self.View_video.bounds.size.height-30, 200, 40
+                                            lblPlayHead.frame=CGRectMake(lblPlayHead.frame.origin.x, moviePlayerController.view.bounds.size.height+10, lblBuffer.frame.size.width, lblPlayHead.frame.size.height);
+                                            
+                                            view_drag.frame=CGRectMake(0, self.view.frame.size.height,moviePlayerController.view.frame.size.width, moviePlayerController.view.frame.size.height/3);
+                                        } completion:nil];
+                    
+                    
+                }
+                NSLog(@"..............play");
+                
+                spinner.center=moviePlayerController.view.center;
+                [moviePlayerController play];
+                
+                if (moviePlayerController.playbackState == MPMoviePlaybackStatePlaying) {
+                    [spinner stopAnimating];
+                }
+                else{
+                    
+                }
+                
+                tap=NO;
+                
+                //                if (moviePlayerController.playbackState == MPMovieFinishReasonPlaybackEnded) {
+                //
+                //                    [[NSNotificationCenter defaultCenter]
+                //                     postNotificationName:@"playbackFinished"
+                //                     object:self];
+                //
+                //
+                //                    [self playbackDidFinish:@"playbackFinished"];
+                //                }
+            }
+            
+        }
+    }
+}
+
+
+
+
+#pragma mark - Session delegate
+
+-(void)URLSession:(NSURLSession *)session
+     downloadTask:(NSURLSessionDownloadTask *)downloadTask
+didFinishDownloadingToURL:(NSURL *)location
+{
+    UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"Title" message:@"Download is  successfully" delegate:self cancelButtonTitle:@"cancel" otherButtonTitles:nil, nil];
+    //[alert show];
+    
+    NSData *data = [NSData dataWithContentsOfURL:location];
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentsDirectory = [paths objectAtIndex:0];
+    NSString *path = [documentsDirectory stringByAppendingPathComponent:@"myMove.mp4"];
+    
+    [data writeToFile:path atomically:YES];
+    NSURL *moveUrl = [NSURL fileURLWithPath:path];
+    //moviePlayerController= [[MPMoviePlayerController alloc]init];
+    [moviePlayerController setContentURL:moveUrl];
+    [moviePlayerController play];
+    //[[NSUserDefaults standardUserDefaults] setObject:data forKey:@"k_video"];
+    //[[NSUserDefaults standardUserDefaults] synchronize];
+    [self writeVideoToPhotoLibrary:data];
+    //    dispatch_async(dispatch_get_main_queue(), ^{
+    //        NSLog(@"-----------------%@",data);
+    //
+    //        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    //        NSString *documentsDirectory = [paths objectAtIndex:0];
+    //        NSString *path = [documentsDirectory stringByAppendingPathComponent:@"myMove.mp4"];
+    //
+    //        [data writeToFile:path atomically:YES];
+    //        NSURL *moveUrl = [NSURL fileURLWithPath:path];
+    //        moviePlayerController= [[MPMoviePlayerController alloc]init];
+    //        [moviePlayerController setContentURL:moveUrl];
+    //        [moviePlayerController play];
+    //
+    //
+    //        NSData *videoData = data;
+    //
+    //        [[NSUserDefaults standardUserDefaults] setObject:data forKey:@"k_video"];
+    //        [[NSUserDefaults standardUserDefaults] synchronize];
+    //
+    //
+    //    });
+    
+}
+
+-(void)URLSession:(NSURLSession *)session
+     downloadTask:(NSURLSessionDownloadTask *)downloadTask
+     didWriteData:(int64_t)bytesWritten
+totalBytesWritten:(int64_t)totalBytesWritten
+totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite
+{
+    //NSLog(@"%f / %f", (double)totalBytesWritten,
+    //      (double)totalBytesExpectedToWrite);
+    //lblPlay.text=[NSString stringWithFormat:@"%f %f",(double)totalBytesWritten ,(double)totalBytesExpectedToWrite];
+}
+
+-(void)writeVideoToPhotoLibrary:(NSData *)data
+{
+    if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL"]==nil || ![[[NSUserDefaults standardUserDefaults] objectForKey:@"k_URL"] isEqualToString:arr_URL[0]])
+    {
+        //NSData *data = [[NSUserDefaults standardUserDefaults] objectForKey:@"k_video"];
+        NSLog(@"---------------------------TASK1");
+        // Write it to cache directory
+        NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"file1.mp4"];
+        [data writeToFile:path atomically:YES];
+        NSLog(@"Path:%@",path);
+        // After that use this path to save it to PhotoLibrary
+        ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+        [library writeVideoAtPathToSavedPhotosAlbum:[NSURL fileURLWithPath:path] completionBlock:^(NSURL *assetURL, NSError *error) {
+            if (error) {
+                NSLog(@"%@", error.description);
+            }else {
+                NSLog(@"Done :)");
+            }
+            [[NSUserDefaults standardUserDefaults] setObject:[assetURL absoluteString] forKey:@"k_video_URL"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }];
+        
+        if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL2"]==nil || [[[NSUserDefaults standardUserDefaults] objectForKey:@"k_URL2"] isEqualToString:arr_URL[1]]) {
+            
+            //NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+            
+            NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+            
+            NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+            NSURL * url = [NSURL URLWithString:arr_URL[1]];
+            NSURLSessionDownloadTask *get_video =
+            [defaultSession downloadTaskWithURL:url];
+            [get_video resume];
+        }
+    }
+    else if ([[NSUserDefaults standardUserDefaults] objectForKey:@"k_video_URL2"]==nil)
+    {
+        //NSData *data = [[NSUserDefaults standardUserDefaults] objectForKey:@"k_video"];
+        NSLog(@"---------------------------TASK2");
+        // Write it to cache directory
+        NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"file1.mp4"];
+        [data writeToFile:path atomically:YES];
+        NSLog(@"Path:%@",path);
+        // After that use this path to save it to PhotoLibrary
+        ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
+        [library writeVideoAtPathToSavedPhotosAlbum:[NSURL fileURLWithPath:path] completionBlock:^(NSURL *assetURL, NSError *error) {
+            if (error) {
+                NSLog(@"%@", error.description);
+            }else {
+                NSLog(@"Done :)");
+            }
+            [[NSUserDefaults standardUserDefaults] setObject:[assetURL absoluteString] forKey:@"k_video_URL2"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }];
+    }
+    else if (![[[NSUserDefaults standardUserDefaults] objectForKey:@"k_URL"] isEqualToString:arr_URL[1]])
+    {
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"k_video_URL2"];
+        //NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+        
+        NSURLSessionConfiguration *defaultConfigObject=[NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"sesion1"];
+        
+        NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate: self delegateQueue: [NSOperationQueue mainQueue]];
+        NSURL * url = [NSURL URLWithString:arr_URL[1]];
+        NSURLSessionDownloadTask *get_video =
+        [defaultSession downloadTaskWithURL:url];
+        
+        [get_video resume];
+    }
+    [spinner stopAnimating];
+}
+
+-(void)viewDidDisappear:(BOOL)animated
+{
+    [[NSNotificationCenter defaultCenter] addObserver:self  selector:@selector(orientationChanged:)    name:UIDeviceOrientationDidChangeNotification  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+
+- (void) playbackDidFinish:(NSNotification*)notification
+{
+    NSLog(@"PlayBackDidFinish Notification Called");
+    @try
+    {
+        int reason = [[[notification userInfo] valueForKey:MPMoviePlayerPlaybackDidFinishReasonUserInfoKey] intValue];
+        if (reason == MPMovieFinishReasonPlaybackEnded)
+        {
+            //movie finished playin
+            
+            if (cur_playVideo < arr_URL.count) {
+                cur_playVideo ++ ;
+            }
+            NSString *filepath = [NSString stringWithFormat:@"%@",arr_URL[cur_playVideo]];
+            NSString *strLocalURL=[self getLocalVideoURL:filepath];
+            if (strLocalURL!=nil && strLocalURL.length>0) {
+                filepath = strLocalURL;
+            }
+            moviePlayerController.contentURL=[NSURL URLWithString: filepath];
+            [moviePlayerController play];
+            
+            [[NSUserDefaults standardUserDefaults] setObject:[NSString stringWithFormat:@"%zd",cur_playVideo] forKey:@"cur_play"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+            
+            [self btn_download_UIComponent];
+            [table_view reloadData];
+            
+            
+            
+        }
+        else if (reason == MPMovieFinishReasonUserExited)
+        {
+            //user hit the done button
+        }else if (reason == MPMovieFinishReasonPlaybackError) {
+            //error
+        }
+        
+    }
+    @catch (NSException *exception) {
+        NSLog(@"Exception is %@",exception);
+    }
+    @finally {
+        
+    }
+}
+
+#pragma mark - push Segue
+-(void)pushViewController
+{
+    VideoPageController *controller = [self.storyboard instantiateViewControllerWithIdentifier:@"VideoPageController"];
+    [self.navigationController pushViewController:controller animated:YES];
+    //   [self performSegueWithIdentifier:@"id_segue_videopage" sender:self];
+}
+
+- (IBAction)downloadVideo:(id)sender
+{
+    if ([self btn_download_UIComponent] == YES) {
+        
+    }
+    else
+    {
+        NSString *fileUrl=[NSString stringWithFormat:@"%@",arr_URL[cur_playVideo]];
+        NSArray *arrFileName = [fileUrl componentsSeparatedByString:@"/"];
+        NSString *strFileName = arrFileName[arrFileName.count - 1];
+        
+        //      [self showProgreessView];
+        [btn_download setEnabled:NO];
+        
+        [[NSUserDefaults standardUserDefaults] setObject:[NSString stringWithFormat:@"%zd",cur_playVideo] forKey:@"cur_down"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [btn_download setBackgroundColor:[UIColor lightGrayColor]];
+        
+        NSURL * url = [NSURL URLWithString:fileUrl];
+        NSURLSessionConfiguration *defaultConfigObject = [NSURLSessionConfiguration defaultSessionConfiguration];
+        NSURLSession *defaultSession = [NSURLSession sessionWithConfiguration: defaultConfigObject delegate:self delegateQueue: [NSOperationQueue mainQueue]];
+        NSURLSessionDownloadTask * downloadTask =[ defaultSession downloadTaskWithURL:url
+                                                                    completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error)
+                                                  {
+                                                      if(error == nil)
+                                                      {
+                                                          NSLog(@"Temporary file =%@",location);
+                                                          NSError *err = nil;
+                                                          NSFileManager *fileManager = [NSFileManager defaultManager];
+                                                          
+                                                          NSString *docsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+                                                          NSURL *docsDirURL = [NSURL fileURLWithPath:[docsDir stringByAppendingPathComponent:strFileName]];
+                                                          
+                                                          if ([fileManager moveItemAtURL:location toURL:docsDirURL error: &err])
+                                                          {
+                                                              NSLog(@"File is saved to =%@",docsDir);
+                                                              [btn_download setBackgroundColor:APP_COLOR];
+                                                              [[NSUserDefaults standardUserDefaults] setObject:nil forKey:@"cur_down"];
+                                                              [[NSUserDefaults standardUserDefaults] synchronize];
+                                                          }
+                                                          else
+                                                          {
+                                                              NSLog(@"Error Download Video %@",error);
+                                                              NSLog(@"failed to move: %@",[err userInfo]);
+                                                              [btn_download setBackgroundColor:[UIColor clearColor]];
+                                                          }
+                                                          dispatch_async(dispatch_get_main_queue(), ^{
+                                                              //  [self hideProgreessView];
+                                                              [btn_download setEnabled:YES];
+                                                              
+                                                          });
+                                                      }
+                                                  }];
+        [downloadTask resume];
+    }
+}
+
+#pragma mark - Progress View
+-(void)showProgreessView
+{
+    UIView *super_view = [[UIView alloc]initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight)];
+    super_view.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+    [super_view setTag:99];
+    UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc]initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    activityIndicator.frame = CGRectMake(10.0, 0.0, 40.0, 40.0);
+    activityIndicator.center = super_view.center;
+    [super_view addSubview: activityIndicator];
+    [activityIndicator setColor:APP_COLOR];
+    [activityIndicator setTintColor:APP_COLOR];
+    [activityIndicator startAnimating];
+    
+    [self.view addSubview:super_view];
+}
+
+-(void)hideProgreessView
+{
+    for (UIView *subView in self.view.subviews)
+    {
+        if (subView.tag == 99)
+        {
+            [subView removeFromSuperview];
+        }
+    }
+}
+///////////////////////////////////
+
+-(BOOL)btn_download_UIComponent
+{
+    BOOL isVideo =false;
+    NSString *strCurDown = [[NSUserDefaults standardUserDefaults] objectForKey:@"cur_down"];
+    //    if (strCurDown!=nil && strCurDown.length>0 && [strCurDown isEqualToString:[NSString stringWithFormat:@"%zd",cur_playVideo]])
+    //    {
+    //        [btn_download setBackgroundColor:[UIColor lightGrayColor]];
+    //    }
+    //    else
+    //    {
+    [btn_download setBackgroundColor:[UIColor clearColor]];
+    NSLog(@"Download Video Action");
+    NSString *fileUrl=[NSString stringWithFormat:@"%@",arr_URL[cur_playVideo]];
+    
+    NSArray *arrFileName = [fileUrl componentsSeparatedByString:@"/"];
+    NSString *strFileName = arrFileName[arrFileName.count - 1];
+    
+    NSString *stringPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)objectAtIndex:0];
+    NSString *tempName = [NSString stringWithFormat:@"%@/%@",stringPath,strFileName];
+    NSLog(@"%@",tempName);
+    if([[NSFileManager defaultManager] fileExistsAtPath:tempName])
+    {
+        [btn_download setBackgroundColor:APP_COLOR];
+        isVideo = true;
+    }
+    
+    /*  Set Video Download Status Informations */
+    [self getSaveVideoDetails:fileUrl];
+    ////////////////// */
+    
+    
+    //  }
+    return isVideo;
+}
+
+-(NSString *) getLocalVideoURL:(NSString *)OnlieURL{
+    
+    NSArray *arrFileName = [OnlieURL componentsSeparatedByString:@"/"];
+    NSString *strFileName = arrFileName[arrFileName.count - 1];
+    
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    NSString *documentsDirectory = [paths objectAtIndex:0];
+    NSDirectoryEnumerator *direnum = [[NSFileManager defaultManager] enumeratorAtPath:documentsDirectory];
+    //T2_D12D8_THEDE_ISSUE_024_RACE_640p.mp4
+    //T2_D8D12_THEDE_ISSUE_025_640_A.mp4
+    //  T2_D8D12_THEDE_ISSUE_025_640_A.mp4
+    NSString *documentsSubpath;
+    NSString *fileFound = nil;
+    while (documentsSubpath = [direnum nextObject])
+    {
+        //        if (![documentsSubpath.lastPathComponent isEqual:strFileName]) {
+        //            continue;
+        //        }
+        if ([documentsSubpath isEqualToString:strFileName]) {
+            fileFound = [[paths objectAtIndex:0] stringByAppendingPathComponent:documentsSubpath];
+            break;
+        }
+    }
+    
+    NSString *strileReturn = nil;
+    if (fileFound !=nil && fileFound.length>0)
+    {
+        //  strileReturn = [NSString stringWithContentsOfFile:fileFound encoding:NSUTF8StringEncoding error:NULL];
+        NSData *someData =  [fileFound dataUsingEncoding:NSUTF8StringEncoding];
+        strileReturn =[[NSString alloc] initWithData:someData encoding:NSUTF8StringEncoding];
+    }
+    NSLog(@"found %@", strileReturn);
+    return strileReturn;
+}
+
+
+#pragma mark - Action Save Video
+-(IBAction)saveVideo:(id)sender
+{
+    NSLog(@"Save Video Tap");
+    @try
+    {
+        NSDictionary  *videoDict = arr_main[cur_playVideo];
+        NSString *str_title = [videoDict objectForKey:TITLE];
+        NSString *str_description = [videoDict objectForKey:DESCRIPTION];
+        NSString *str_pub_date = [videoDict objectForKey:PUB_DATE];
+        NSString *str_video_url = [videoDict objectForKey:VIDEO_URL];
+        NSString *str_video_type = [videoDict objectForKey:VIDEO_TYPE];
+    
+        
+        NSInteger isInserted = [DBHandler SetVideoDetailMyList:str_title description:str_description pub_date:str_pub_date video_url:str_video_url video_type:str_video_type];
+        if (isInserted == 1) {
+            NSLog(@"Succefully Inserted");
+            [self btn_download_UIComponent];
+        }
+    }
+    @catch (NSException *exception) {
+        NSLog(@"Exception Save Video Tap %@",exception);
+    }
+    @finally {
+        
+    }
+}
+
+-(void)getSaveVideoDetails:(NSString *)strUrl
+{
+    @try
+    {
+        NSMutableArray *arrVideo = [[NSMutableArray alloc]initWithArray:[DBHandler getVideoDetailMyList]];
+        BOOL flag = FALSE;
+        for (int i = 0 ; i<arrVideo.count; i++)
+        {
+            NSDictionary  *videoDict = arrVideo[i];
+            NSString *str_title = [videoDict objectForKey:TITLE];
+            NSString *str_description = [videoDict objectForKey:DESCRIPTION];
+            NSString *str_pub_date = [videoDict objectForKey:PUB_DATE];
+            NSString *str_video_url = [videoDict objectForKey:VIDEO_URL];
+            
+            if ([strUrl isEqualToString:str_video_url]) {
+                [btn_savelist setBackgroundColor:APP_COLOR];
+                [btn_savelist setEnabled:FALSE];
+                flag = TRUE;
+                break;
+            }
+        }
+        
+        if (flag == FALSE) {
+            [btn_savelist setBackgroundColor:[UIColor clearColor]];
+            [btn_savelist setEnabled:TRUE];
+        }
+    }
+    @catch (NSException *exception) {
+        NSLog(@"Exception getSaveVideoDetails");
+    }
+    @finally
+    {
+        
+    }
+}
+
+#pragma mark - Action Link Video
+-(IBAction)linkVideo:(id)sender
+{
+    NSLog(@"Save Video Tap");
+    @try
+    {
+        NSURL *url = [NSURL URLWithString:[arr_URL objectAtIndex:cur_playVideo]];
+        if ([[UIApplication sharedApplication] canOpenURL:url]) {
+            [[UIApplication sharedApplication] openURL:url];
+        }
+    }
+    @catch (NSException *exception) {
+        NSLog(@"Exception Save Video Tap %@",exception);
+    }
+    @finally {
+        
+    }
+}
+
+#pragma mark - Action Navigation
+-(IBAction)BTLastPageTap:(id)sender {
+    AlreadyDownloadController *controller = [self.storyboard instantiateViewControllerWithIdentifier:@"AlreadyDownloadController"];
+    [self.navigationController pushViewController:controller animated:true];
+}
+
+-(IBAction)BTHomePageTap:(id)sender
+{
+    NSArray *array = self.navigationController.viewControllers;
+    for (id controller in array)
+    {
+        if ([controller isKindOfClass:[Main_ViewController class]]) {
+            [self.navigationController popToViewController:controller animated:YES];
+        }
+    }
+    [self.navigationController popViewControllerAnimated:NO];
+    Main_ViewController *controller = [self.storyboard instantiateViewControllerWithIdentifier:@"Main_ViewController"];
+    [self.navigationController pushViewController:controller animated:YES];
+}
+/*
+ #pragma mark - Navigation
+ 
+ // In a storyboard-based application, you will often want to do a little preparation before navigation
+ - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+ // Get the new view controller using [segue destinationViewController].
+ // Pass the selected object to the new view controller.
+ }
+ */
+
+- (IBAction)BTLastTap:(id)sender {
+    AddPageController *controller = [self.storyboard instantiateViewControllerWithIdentifier:@"AddPageController"];
+    [self.navigationController pushViewController:controller animated:YES];
+}
+@end
